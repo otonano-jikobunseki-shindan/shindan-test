@@ -1,1 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>診断テスト</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>あなたの特性が笑っちゃうほどわかる！大人の診断テスト！</h1>
+    <p>5分以内で回答できる！現在、完全無料で診断可！</p>
+
+    <h2>あなたは男性？女性？その他？</h2>
+
+    <div class="btns">
+      <button onclick="start('male')">男性</button>
+      <button onclick="start('female')">女性</button>
+      <button onclick="start('other')">その他</button>
+    </div>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    function start(gender){
+      App.initSession(gender);
+      location.href = "quiz.html";
+    }
+  </script>
+</body>
+</html>
 

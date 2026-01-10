@@ -171,16 +171,22 @@ function parseTSV(tsv){
 function optStr(n){ return "OPT" + String(n); }
 
 async function postGAS(payload){
+  const body = new URLSearchParams();
+  body.set("payload", JSON.stringify(payload));
+
   const res = await fetch(GAS_URL, {
-    method:"POST",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify(payload)
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+    body
   });
+
   const text = await res.text();
   let json;
-  try{ json = JSON.parse(text); }catch(_){ throw new Error("GAS応答がJSONではありません"); }
+  try { json = JSON.parse(text); }
+  catch { throw new Error("GAS応答がJSONではありません: " + text.slice(0,200)); }
   return json;
 }
+
 
 function handoffToNextPage(){
   const sid = encodeURIComponent(runtime.sid || "");
@@ -634,28 +640,6 @@ function renderHandoff(){
   document.getElementById("go").onclick = () => handoffToNextPage();
   setTimeout(() => handoffToNextPage(), 500);
 }
-  async function postGAS(payload){
-  const body = new URLSearchParams();
-  body.set("payload", JSON.stringify(payload));
-
-  const res = await fetch(GAS_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-    },
-    body
-  });
-
-  const text = await res.text();
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error("GAS応答がJSONではありません: " + text.slice(0, 200));
-  }
-  return json;
-}
-
 </script>
 </body>
 </html>

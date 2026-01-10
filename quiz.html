@@ -2,868 +2,614 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
   <title>大人の診断テスト</title>
   <style>
     :root{
-      --bg:#0b1220;
-      --card:#121a2b;
-      --card2:#0f1726;
-      --text:#e8eefc;
-      --muted:#a9b5d1;
-      --accent:#6ee7ff;
-      --accent2:#a78bfa;
-      --danger:#ff6b6b;
-      --ok:#34d399;
-      --border:rgba(255,255,255,.10);
+      --bg:#0b1020; --card:#121a33; --muted:#93a4c7; --text:#eaf0ff;
+      --accent:#7c3aed; --accent2:#22c55e; --danger:#ef4444; --line:#243055;
     }
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", Arial, sans-serif;
-      background: radial-gradient(1200px 700px at 15% 10%, rgba(110,231,255,.18), transparent 55%),
-                  radial-gradient(900px 600px at 85% 15%, rgba(167,139,250,.16), transparent 55%),
-                  var(--bg);
-      color:var(--text);
-    }
-    .wrap{
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 18px 14px 40px;
-    }
-    .hero{
-      padding: 18px 14px 12px;
-    }
-    .title{
-      font-size: 20px;
-      line-height: 1.25;
-      margin: 0 0 8px;
-      letter-spacing: .02em;
-    }
-    .subtitle{
-      margin:0;
-      color:var(--muted);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-    .card{
-      background: linear-gradient(180deg, rgba(18,26,43,.95), rgba(15,23,38,.92));
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px;
-      box-shadow: 0 14px 40px rgba(0,0,0,.28);
-      backdrop-filter: blur(6px);
-    }
-    .row{display:flex; gap:10px; flex-wrap:wrap}
+    *{box-sizing:border-box}
+    body{margin:0;font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;background:linear-gradient(180deg,#0b1020,#070a14);color:var(--text);}
+    a{color:inherit}
+    .wrap{max-width:760px;margin:0 auto;padding:18px 14px 40px;}
+    .hero{padding:18px 16px;border:1px solid var(--line);border-radius:16px;background:rgba(18,26,51,.72);backdrop-filter: blur(8px);}
+    h1{font-size:22px;margin:0 0 8px;}
+    .sub{color:var(--muted);line-height:1.6;margin:0}
+    .card{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(18,26,51,.72);}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
     .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      cursor:pointer;
-      font-size: 14px;
-      text-decoration:none;
-      user-select:none;
-      transition: transform .03s ease, background .15s ease, border-color .15s ease;
-      flex: 1 1 140px;
-      min-width: 120px;
+      appearance:none;border:1px solid var(--line);background:#0f1733;color:var(--text);
+      padding:12px 14px;border-radius:12px;font-weight:700;cursor:pointer;flex:1;min-width:140px;
     }
-    .btn:hover{background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.18)}
-    .btn:active{transform: translateY(1px)}
-    .btnPrimary{
-      background: linear-gradient(90deg, rgba(110,231,255,.18), rgba(167,139,250,.18));
-      border-color: rgba(110,231,255,.28);
-    }
-    .btnPrimary:hover{background: linear-gradient(90deg, rgba(110,231,255,.24), rgba(167,139,250,.22))}
-    .btnGhost{
-      background: transparent;
-    }
-    .small{font-size:12px; color:var(--muted)}
-    .progressWrap{
-      margin: 12px 0 0;
-      display:flex;
-      align-items:center;
-      gap: 10px;
-    }
-    .bar{
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid var(--border);
-      flex: 1;
-      overflow:hidden;
-    }
-    .bar > div{
-      height:100%;
-      width:0%;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 999px;
-      transition: width .25s ease;
-    }
-    .qTitle{
-      font-size: 16px;
-      line-height: 1.5;
-      margin: 4px 0 10px;
-    }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      font-size: 12px;
-      color: var(--muted);
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.05);
-      padding: 6px 10px;
-      border-radius: 999px;
-    }
-    .opt{
-      display:flex;
-      align-items:flex-start;
-      gap:10px;
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.04);
-      cursor:pointer;
-      margin: 10px 0;
-    }
-    .opt:hover{background: rgba(255,255,255,.07)}
-    .opt input{margin-top: 3px}
-    .optText{
-      font-size: 14px;
-      line-height: 1.45;
-    }
-    .nav{
-      margin-top: 12px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .input{
-      width:100%;
-      padding: 12px 12px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.05);
-      color: var(--text);
-      font-size: 14px;
-      outline:none;
-    }
-    .input:focus{border-color: rgba(110,231,255,.35)}
-    .warn{color: #ffd18a}
-    .err{color: var(--danger)}
-    .ok{color: var(--ok)}
-    .sectionTitle{
-      font-size: 15px;
-      margin: 18px 0 8px;
-    }
-    .resultTop{
-      font-size: 18px;
-      line-height: 1.4;
-      margin: 0 0 8px;
-    }
-    .resultBox{
-      background: rgba(255,255,255,.04);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px;
-      margin: 10px 0 0;
-      white-space: pre-wrap;
-    }
-    .bullets{
-      margin: 0;
-      padding-left: 18px;
-      color: var(--text);
-    }
-    .bullets li{margin: 6px 0}
-    .footerSpace{height: 18px}
+    .btn:hover{border-color:#3b4a7a}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#4f46e5);border-color:transparent;}
+    .btn.good{background:linear-gradient(90deg,var(--accent2),#16a34a);border-color:transparent;}
+    .btn.ghost{background:transparent}
+    .btn.danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);}
+    .label{font-size:12px;color:var(--muted);margin:0 0 8px}
+    .progress{height:10px;background:#0a0f22;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+    .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#22c55e);transition:width .25s}
+    .qtitle{font-size:16px;font-weight:800;margin:0 0 10px;line-height:1.5}
+    .opt{display:block;width:100%;text-align:left;margin:10px 0;padding:12px 12px;border-radius:12px;border:1px solid var(--line);background:#0f1733;color:var(--text);cursor:pointer}
+    .opt:hover{border-color:#3b4a7a}
+    .tiny{font-size:12px;color:var(--muted);line-height:1.6}
+    .field{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0f1733;color:var(--text);font-size:16px}
+    .hr{height:1px;background:var(--line);margin:14px 0}
+    .pill{display:inline-block;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .err{color:#fecaca;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.35);padding:10px;border-radius:12px;margin-top:10px}
+    .ok{color:#bbf7d0;background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.35);padding:10px;border-radius:12px;margin-top:10px}
+    .mutedBox{border:1px dashed var(--line);border-radius:12px;padding:10px;color:var(--muted);line-height:1.7}
+    .sectionTitle{font-size:16px;margin:0 0 6px;font-weight:900}
+    .pre{white-space:pre-wrap;line-height:1.8}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="hero">
-      <h1 class="title">あなたの特性が笑っちゃうほどわかる！大人の診断テスト！</h1>
-      <p class="subtitle">5分以内で回答できる！現在、完全無料で診断可！</p>
+      <h1>あなたの特性が笑っちゃうほどわかる！大人の診断テスト！</h1>
+      <p class="sub">5分以内で回答できる！現在、完全無料で診断できます。</p>
+      <p class="sub tiny">※このページはスマホ前提で作っていますが、PCでも表示可能です。</p>
     </div>
 
     <div id="app" class="card"></div>
-    <div class="footerSpace"></div>
+
+    <div class="card">
+      <div class="label">デバッグ表示（必要なときだけ見る用）</div>
+      <div class="mutedBox tiny">
+        sessionId: <span id="dbgSid" class="mono"></span><br/>
+        step: <span id="dbgStep" class="mono"></span>
+      </div>
+    </div>
   </div>
 
 <script>
-/* =============================
+/* =========================
    設定
-============================= */
+========================= */
 const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
 
-// GitHub Pagesに置いたTSV
-const TSV_PATHS = {
+// GAS側のaction名（あなたの実装に合わせて調整）
+const ACTIONS = {
+  LOG: "logAnswer",     // 1問ごと記録（※GASが対応していない場合は失敗しても続行）
+  FINALIZE: "finalize", // 結果確定
+  EMAIL: "email"        // メール送信
+};
+
+// TSVファイル
+const TSV_PATH = {
   male: "data/male_questions.tsv",
-  female: "data/female_questions.tsv"
+  female: "data/female_questions.tsv" // 女性＋その他はこれ
 };
 
 // localStorage keys
 const LS = {
-  sessionId: "diag_sessionId",
   gender: "diag_gender",
-  answers: "diag_answers",      // {Q1:"OPT2",...}
-  mbti: "diag_mbti",            // {MBTI1:"E",...} or {}
-  progress: "diag_progress",    // current question index
-  name: "diag_name",
-  result: "diag_result"         // cached finalize result JSON
+  sid: "diag_sid",
+  answers: "diag_answers",
+  progress: "diag_progress"
 };
 
-/* =============================
-   ユーティリティ
-============================= */
-function uuidv4(){
-  // ざっくりUUID（セキュリティ用途じゃないのでこれでOK）
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-    const r = Math.random()*16|0;
-    const v = c === "x" ? r : (r&0x3|0x8);
-    return v.toString(16);
-  });
-}
-function escapeHtml(s){
-  return String(s ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#39;");
-}
-function pick(v, d){ return (v==null || String(v).trim()==="") ? d : v; }
-
-function loadLS(key, fallback){
-  try{
-    const v = localStorage.getItem(key);
-    if (!v) return fallback;
-    return JSON.parse(v);
-  }catch(e){
-    return fallback;
-  }
-}
-function saveLS(key, value){
-  localStorage.setItem(key, JSON.stringify(value));
-}
-function delLS(){
-  Object.values(LS).forEach(k => localStorage.removeItem(k));
-}
-function linesToBullets(text){
-  const s = String(text || "").trim();
-  if(!s) return [];
-  // 「・」区切りでも改行でもOKにしておく
-  const rawLines = s.split("\n").map(x=>x.trim()).filter(Boolean);
-  const out = [];
-  rawLines.forEach(line=>{
-    if(line.startsWith("・")) out.push(line.slice(1).trim());
-    else out.push(line);
-  });
-  return out.filter(Boolean);
-}
-async function postJson(url, payload){
-  const res = await fetch(url, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(payload)
-  });
-  const text = await res.text();
-  // GASはJSON返す想定
-  try{ return JSON.parse(text); }catch(e){ return { ok:false, error:"Bad JSON", raw:text }; }
-}
-
-/* =============================
-   TSVパーサ（超軽量）
-   - タブ区切り
-   - 1行目: OPT1..など（先頭3列は空） ← 無視
-   - 2行目: QID / 形式 / 質問文 / 選択肢1.. ← これをヘッダとして採用
-============================= */
-function parseTSV(tsvText){
-  const rows = tsvText
-    .replace(/\r\n/g,"\n")
-    .replace(/\r/g,"\n")
-    .split("\n")
-    .map(line => line.split("\t"));
-
-  // header row探し：先頭セルが "QID"
-  let headerRowIndex = -1;
-  for(let i=0; i<Math.min(rows.length, 10); i++){
-    if((rows[i][0]||"").trim() === "QID"){ headerRowIndex = i; break; }
-  }
-  if(headerRowIndex < 0) throw new Error("TSVのヘッダ行(QID)が見つかりません");
-
-  const header = rows[headerRowIndex].map(x => (x||"").trim());
-  const dataRows = rows.slice(headerRowIndex + 1).filter(r => (r[0]||"").trim() !== "");
-
-  const idx = {};
-  header.forEach((h,i)=>{ if(h) idx[h]=i; });
-
-  const q = [];
-  for(const r of dataRows){
-    const qid = (r[idx["QID"]]||"").trim();
-    const fmt = (r[idx["形式"]]||"").trim();
-    const text = (r[idx["質問文"]]||"").trim();
-
-    // 選択肢は「選択肢1..6」想定（あなたのTSV形式）
-    const opts = [];
-    for(let i=1; i<=6; i++){
-      const key = "選択肢" + i;
-      if(idx[key] == null) continue;
-      const label = (r[idx[key]]||"").trim();
-      if(label) opts.push({ opt: "OPT"+i, label });
-    }
-
-    // 念のため OPT1.. 形式にも対応
-    if(opts.length === 0){
-      for(let i=1; i<=6; i++){
-        const key = "OPT" + i;
-        if(idx[key] == null) continue;
-        const label = (r[idx[key]]||"").trim();
-        if(label) opts.push({ opt: "OPT"+i, label });
-      }
-    }
-
-    if(!qid || !text || opts.length < 2) continue;
-    q.push({ qid, fmt, text, opts });
-  }
-
-  // Q1..Q50順に並べる
-  q.sort((a,b)=>{
-    const na = Number((a.qid.match(/\d+/)||["0"])[0]);
-    const nb = Number((b.qid.match(/\d+/)||["0"])[0]);
-    return na - nb;
-  });
-  return q;
-}
-
-/* =============================
-   画面状態
-============================= */
-const state = {
-  step: "gender", // gender | quiz | mbti | name | result
-  gender: loadLS(LS.gender, null), // male/female/other
-  sessionId: loadLS(LS.sessionId, null),
+// 仕様：結果表示後は「次回アクセスで最初から」にしたい
+// → 結果を受け取った瞬間に localStorage を消す（ただし、結果画面のメール送信用にsidはメモリに残す）
+let runtime = {
+  step: "landing",
+  sid: "",
+  gender: "",
   questions: [],
-  qIndex: loadLS(LS.progress, 0),
-  answers: loadLS(LS.answers, {}),
-  mbti: loadLS(LS.mbti, {}),
-  name: loadLS(LS.name, ""),
-  result: loadLS(LS.result, null),
-  loading: false,
-  message: ""
+  idx: 0,
+  answers: {},      // Q1..Q50: OPTx / MBTI1..4: 値
+  result: null,     // finalize結果JSON
+  name: "あなた"    // 画面用（サニタイズはGAS側でもやる前提）
 };
 
-function setStep(step){
-  state.step = step;
-  render();
+const $app = document.getElementById("app");
+const $dbgSid = document.getElementById("dbgSid");
+const $dbgStep = document.getElementById("dbgStep");
+
+/* =========================
+   ユーティリティ
+========================= */
+function setStep(step){ runtime.step = step; render(); }
+function escapeHTML(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function nowISO(){ return new Date().toISOString(); }
+
+// sessionId生成（十分にユニークならOK）
+function newSessionId(){
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  return "sid_" + Date.now() + "_" + Math.random().toString(16).slice(2);
 }
 
-function setMessage(msg){
-  state.message = msg || "";
-  render();
+function loadLS(){
+  const sid = localStorage.getItem(LS.sid);
+  const gender = localStorage.getItem(LS.gender);
+  const answersRaw = localStorage.getItem(LS.answers);
+  const progressRaw = localStorage.getItem(LS.progress);
+
+  if (sid) runtime.sid = sid;
+  if (gender) runtime.gender = gender;
+
+  if (answersRaw){
+    try{ runtime.answers = JSON.parse(answersRaw) || {}; }catch(_){}
+  }
+  if (progressRaw){
+    try{
+      const p = JSON.parse(progressRaw) || {};
+      runtime.idx = Number(p.idx || 0);
+    }catch(_){}
+  }
 }
 
-/* =============================
-   性別 → 質問TSVロード
-============================= */
-async function loadQuestionsByGender(gender){
-  const path = (gender === "male") ? TSV_PATHS.male : TSV_PATHS.female; // otherはfemale側へ
-  const res = await fetch(path, { cache: "no-store" });
-  if(!res.ok) throw new Error("TSV読込に失敗: " + path);
+function saveLS(){
+  localStorage.setItem(LS.sid, runtime.sid);
+  localStorage.setItem(LS.gender, runtime.gender);
+  localStorage.setItem(LS.answers, JSON.stringify(runtime.answers || {}));
+  localStorage.setItem(LS.progress, JSON.stringify({ idx: runtime.idx, savedAt: nowISO() }));
+}
+
+// 仕様：結果表示後に次回新規にする
+function clearLSAfterResult(){
+  localStorage.removeItem(LS.gender);
+  localStorage.removeItem(LS.sid);
+  localStorage.removeItem(LS.answers);
+  localStorage.removeItem(LS.progress);
+}
+
+// TSV読み込み
+async function loadTSV(path){
+  const res = await fetch(path, { cache:"no-store" });
+  if (!res.ok) throw new Error(`TSV読込に失敗: ${path}`);
   const text = await res.text();
   return parseTSV(text);
 }
 
-/* =============================
-   GAS送信（1問ごと）
-============================= */
-async function sendAnswerToGAS({sessionId, gender, qid, opt}){
-  // ここはGAS側に action:"answer" がある前提
-  // もしまだ無いなら、とりあえずこの関数の中身をコメントアウトしてUIだけ進めてOK
-  return await postJson(GAS_URL, {
-    action: "answer",
-    sessionId,
-    gender,
-    qid,
-    opt
+// TSVパーサ（シンプル）
+function parseTSV(tsv){
+  const lines = tsv.replace(/\r/g,"").split("\n").filter(l => l.trim() !== "");
+  if (lines.length < 2) return [];
+  const header = lines[0].split("\t").map(s=>s.trim());
+  const rows = [];
+  for (let i=1;i<lines.length;i++){
+    const cols = lines[i].split("\t");
+    const obj = {};
+    for (let c=0;c<header.length;c++){
+      obj[header[c]] = (cols[c] ?? "").trim();
+    }
+    rows.push(obj);
+  }
+  return rows;
+}
+
+// OPT整形（GAS側も normalizeOpt してる想定）
+function optStr(n){ return "OPT" + String(n); }
+
+// GASへPOST
+async function postGAS(payload){
+  const res = await fetch(GAS_URL, {
+    method:"POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify(payload)
   });
+  const text = await res.text();
+  let json;
+  try{ json = JSON.parse(text); }catch(_){ throw new Error("GAS応答がJSONではありません"); }
+  return json;
 }
 
-/* =============================
-   画面レンダ
-============================= */
+/* =========================
+   初期化
+========================= */
+async function init(){
+  loadLS();
+
+  // sidがなければ発行
+  if (!runtime.sid) runtime.sid = newSessionId();
+
+  // 初期ステップ決定
+  // 統合版なので index不要。ここで性別未選択なら gender ステップへ。
+  runtime.step = "landing";
+
+  render();
+}
+init();
+
+/* =========================
+   画面：レンダリング
+========================= */
 function render(){
-  const app = document.getElementById("app");
-  if(!app) return;
+  $dbgSid.textContent = runtime.sid || "";
+  $dbgStep.textContent = runtime.step || "";
 
-  const msg = state.message ? `<div class="${state.message.startsWith("OK:") ? "ok":"warn"}" style="margin:10px 0 0;">${escapeHtml(state.message.replace(/^OK:\s*/,""))}</div>` : "";
-
-  if(state.step === "gender"){
-    app.innerHTML = `
-      <div>
-        <div class="pill">まずは性別を選んでスタート</div>
-        <p class="qTitle">あなたはどれ？</p>
-        <div class="row">
-          <button class="btn btnPrimary" onclick="onPickGender('male')">男性</button>
-          <button class="btn btnPrimary" onclick="onPickGender('female')">女性</button>
-          <button class="btn btnPrimary" onclick="onPickGender('other')">その他</button>
-        </div>
-        <p class="small" style="margin-top:10px;">
-          ※その他を選んだ場合は、女性と同じ質問に進みます。
-        </p>
-        ${msg}
-      </div>
-    `;
-    return;
-  }
-
-  if(state.step === "quiz"){
-    const total = state.questions.length || 0;
-    const answered = Object.keys(state.answers || {}).filter(k => /^Q\d+$/.test(k)).length;
-    const pct = total ? Math.min(100, Math.floor((answered/total)*100)) : 0;
-
-    const q = state.questions[state.qIndex];
-    if(!q){
-      app.innerHTML = `
-        <div>
-          <div class="pill">質問の読み込みができていません</div>
-          <p class="small">性別選択からやり直してください。</p>
-          <div class="nav">
-            <button class="btn btnGhost" onclick="resetAll()">最初から</button>
-          </div>
-          ${msg}
-        </div>
-      `;
-      return;
-    }
-
-    const currentAnswer = state.answers[q.qid] || "";
-    const optHtml = q.opts.map(o => `
-      <label class="opt">
-        <input type="radio" name="opt" value="${escapeHtml(o.opt)}" ${currentAnswer===o.opt ? "checked":""} onchange="onChooseOpt('${q.qid}','${o.opt}')">
-        <div class="optText">${escapeHtml(o.label)}</div>
-      </label>
-    `).join("");
-
-    app.innerHTML = `
-      <div>
-        <div class="row" style="justify-content:space-between; align-items:center;">
-          <div class="pill">${escapeHtml(q.qid)} / 全${total}問</div>
-          <div class="pill">進捗 ${pct}%</div>
-        </div>
-
-        <div class="progressWrap">
-          <div class="bar"><div style="width:${pct}%"></div></div>
-        </div>
-
-        <p class="qTitle">${escapeHtml(q.text)}</p>
-
-        ${optHtml}
-
-        <div class="nav">
-          <button class="btn btnGhost" onclick="onPrev()" ${state.qIndex<=0 ? "disabled":""}>戻る</button>
-          <button class="btn btnPrimary" onclick="onNext()" ${!currentAnswer ? "disabled":""}>次へ</button>
-          <button class="btn" onclick="onJumpToEnd()" ${answered<total ? "disabled":""}>回答を送信へ</button>
-        </div>
-
-        <div class="nav">
-          <button class="btn btnGhost" onclick="resetAll()">最初から</button>
-          <button class="btn btnGhost" onclick="clearLocalOnly()">この端末の保存だけ消す</button>
-        </div>
-
-        <p class="small" style="margin-top:10px;">
-          ※途中で閉じても続きから再開できます（この端末に保存されます）。
-        </p>
-        ${msg}
-      </div>
-    `;
-    return;
-  }
-
-  if(state.step === "mbti"){
-    const total = state.questions.length || 50;
-    const answered = Object.keys(state.answers || {}).filter(k => /^Q\d+$/.test(k)).length;
-
-    app.innerHTML = `
-      <div>
-        <div class="pill">任意：MBTI（入力しなくてもOK）</div>
-        <p class="qTitle">MBTIを入力する？</p>
-
-        <div class="row">
-          <button class="btn btnPrimary" onclick="onSkipMBTI()">入力しないで進む</button>
-        </div>
-
-        <div style="margin-top:14px;">
-          <div class="sectionTitle">入力する場合</div>
-          <div class="small">それぞれ1つ選んでください（未選択でもOK）。</div>
-
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-            ${mbtiSelect("MBTI1","E","I")}
-            ${mbtiSelect("MBTI2","S","N")}
-            ${mbtiSelect("MBTI3","T","F")}
-            ${mbtiSelect("MBTI4","J","P")}
-          </div>
-
-          <div class="nav" style="margin-top:14px;">
-            <button class="btn btnPrimary" onclick="onDoneMBTI()">次へ</button>
-            <button class="btn btnGhost" onclick="setStep('quiz')">質問に戻る</button>
-          </div>
-
-          <p class="small" style="margin-top:10px;">
-            現在：${answered}/${total}問 回答済み
-          </p>
-        </div>
-        ${msg}
-      </div>
-    `;
-    return;
-  }
-
-  if(state.step === "name"){
-    app.innerHTML = `
-      <div>
-        <div class="pill">あと一歩</div>
-        <p class="qTitle">おなまえ（未入力なら「あなた」になります）</p>
-
-        <input class="input" id="nameInput" placeholder="例：とあ" value="${escapeHtml(state.name || "")}" maxlength="40" oninput="onNameInput(this.value)" />
-
-        <p class="small" style="margin-top:10px;">
-          ※診断結果の文章を、あなたのお名前に変えて表示します。<br>
-          ※それ以外の目的で名前を使用することはありません。
-        </p>
-
-        <div class="nav">
-          <button class="btn btnGhost" onclick="setStep('mbti')">戻る</button>
-          <button class="btn btnPrimary" onclick="onFinalize()">結果を見る</button>
-        </div>
-        ${msg}
-      </div>
-    `;
-    return;
-  }
-
-  if(state.step === "result"){
-    const r = state.result;
-    if(!r){
-      app.innerHTML = `
-        <div>
-          <div class="pill">結果がありません</div>
-          <p class="small">集計に失敗した可能性があります。</p>
-          <div class="nav">
-            <button class="btn btnGhost" onclick="setStep('name')">戻る</button>
-            <button class="btn" onclick="resetAll()">最初から</button>
-          </div>
-          ${msg}
-        </div>
-      `;
-      return;
-    }
-
-    const name = escapeHtml(pick(r.name, "あなた"));
-    const prefix = escapeHtml(pick(r.prefix, ""));
-    const animal = escapeHtml(pick(r.animal, ""));
-    const animalBullets = linesToBullets(r.features?.animal || "");
-    const prefixBullets = linesToBullets(r.features?.prefix || "");
-
-    const sectionTitles = {
-      A:"①思考・意思決定の深層スタイル",
-      B:"②感情との距離感・扱い方",
-      C:"③自己価値感・自己肯定の源泉",
-      D:"④ストレス構造と回復パターン",
-      E:"⑤対人関係・距離感のクセ",
-      F:"⑥親密さ・恋愛における心理傾向",
-      G:"⑦性と自己理解のつながり方",
-      H:"⑧人生の進み方・停滞ポイント"
-    };
-
-    const secHtml = ["A","B","C","D","E","F","G","H"].map(k => `
-      <div class="sectionTitle">${escapeHtml(sectionTitles[k])}</div>
-      <div class="resultBox">${escapeHtml(pick(r.sections?.[k], "（準備中）"))}</div>
-    `).join("");
-
-    app.innerHTML = `
-      <div>
-        <div class="pill">診断結果</div>
-        <p class="resultTop">${name}さんは… ${prefix}${animal} です！</p>
-
-        <div class="resultBox">
-          ${escapeHtml(prefix)}${escapeHtml(animal)}の${name}さんは、
-        </div>
-
-        <div class="sectionTitle">特徴</div>
-        <div class="resultBox">
-          動物グループの特徴
-          ${animalBullets.length ? "<ul class='bullets'>" + animalBullets.map(x=>"<li>"+escapeHtml(x)+"</li>").join("") + "</ul>" : "<div class='small'>（準備中）</div>"}
-          <div style="height:10px;"></div>
-          接頭語グループの特徴
-          ${prefixBullets.length ? "<ul class='bullets'>" + prefixBullets.map(x=>"<li>"+escapeHtml(x)+"</li>").join("") + "</ul>" : "<div class='small'>（準備中）</div>"}
-        </div>
-
-        ${secHtml}
-
-        <div class="sectionTitle">メールで受け取る（任意）</div>
-        <div class="resultBox">
-          <input class="input" id="emailInput" placeholder="メールアドレス" inputmode="email" />
-          <div class="nav" style="margin-top:10px;">
-            <button class="btn btnPrimary" onclick="onSendEmail()">この結果をメールで送信</button>
-          </div>
-          <div class="small" style="margin-top:8px;">
-            ※結果のメール送信以外の目的で、メールアドレスを使用することはありません。
-          </div>
-        </div>
-
-        <div class="nav" style="margin-top:14px;">
-          <button class="btn btnGhost" onclick="resetAll()">最初から（新規セッション）</button>
-        </div>
-
-        ${msg}
-      </div>
-    `;
-    return;
-  }
-
-  // fallback
-  app.innerHTML = `<div>表示エラー</div>`;
+  if (runtime.step === "landing") return renderLanding();
+  if (runtime.step === "gender") return renderGender();
+  if (runtime.step === "quiz") return renderQuiz();
+  if (runtime.step === "name") return renderName();
+  if (runtime.step === "result") return renderResult();
 }
 
-function mbtiSelect(key, a, b){
-  const cur = state.mbti?.[key] || "";
-  return `
-    <div>
-      <div class="pill">${escapeHtml(key)}</div>
-      <select class="input" onchange="onMBTIChange('${key}', this.value)">
-        <option value="">未入力</option>
-        <option value="${a}" ${cur===a?"selected":""}>${a}</option>
-        <option value="${b}" ${cur===b?"selected":""}>${b}</option>
-      </select>
+function renderLanding(){
+  $app.innerHTML = `
+    <div class="label">まずはスタート</div>
+    <p class="sub">いくつかの質問に答えるだけで、あなたの傾向をスパッと整理します。</p>
+    <div class="hr"></div>
+    <button class="btn primary" id="btnStart">診断をはじめる</button>
+    <p class="tiny" style="margin-top:10px;">
+      ※「途中保存の削除ボタン」は置きません。<br/>
+      ※結果まで到達したら、次回アクセス時は自動で最初からになります。
+    </p>
+  `;
+  document.getElementById("btnStart").onclick = () => {
+    // 性別が保存されていればスキップも可能だが、今回は毎回しっかり導線に乗せる
+    setStep("gender");
+  };
+}
+
+function renderGender(){
+  $app.innerHTML = `
+    <div class="label">質問 0 / 性別</div>
+    <p class="qtitle">あなたはどれですか？</p>
+    <div class="row">
+      <button class="btn" id="gMale">男性</button>
+      <button class="btn" id="gFemale">女性</button>
+      <button class="btn" id="gOther">その他</button>
+    </div>
+    <p class="tiny" style="margin-top:10px;">
+      ※「その他」は女性と同じ質問に進みます。<br/>
+      ※それ以外の目的で性別を使用しません。
+    </p>
+  `;
+
+  document.getElementById("gMale").onclick = () => startQuizWithGender("male");
+  document.getElementById("gFemale").onclick = () => startQuizWithGender("female");
+  document.getElementById("gOther").onclick = () => startQuizWithGender("female"); // 仕様
+}
+
+async function startQuizWithGender(gender){
+  runtime.gender = gender;
+  runtime.idx = 0;
+  runtime.answers = {};
+  runtime.result = null;
+  saveLS();
+
+  try{
+    runtime.questions = await loadTSV(gender === "male" ? TSV_PATH.male : TSV_PATH.female);
+  }catch(err){
+    $app.innerHTML = `<div class="err">TSV読込エラー: ${escapeHTML(err.message)}</div>
+      <div class="hr"></div>
+      <button class="btn ghost" id="back">戻る</button>`;
+    document.getElementById("back").onclick = () => setStep("gender");
+    return;
+  }
+
+  setStep("quiz");
+}
+
+function renderQuiz(){
+  const qTotal = runtime.questions.length || 0;
+  const idx = runtime.idx;
+
+  if (!qTotal){
+    $app.innerHTML = `
+      <div class="err">質問データが空です。TSVの中身を確認してください。</div>
+      <div class="hr"></div>
+      <button class="btn ghost" id="back">性別選択に戻る</button>
+    `;
+    document.getElementById("back").onclick = () => setStep("gender");
+    return;
+  }
+
+  // idxが最後を超えたら送信へ
+  if (idx >= qTotal){
+    $app.innerHTML = `
+      <div class="label">回答完了</div>
+      <p class="qtitle">最後に、送信して結果に進みます。</p>
+      <button class="btn good" id="btnSubmit">回答を送信！</button>
+      <p class="tiny" style="margin-top:10px;">
+        ※送信後、おなまえ入力に進みます（未入力なら「あなた」になります）。
+      </p>
+    `;
+    document.getElementById("btnSubmit").onclick = () => setStep("name");
+    return;
+  }
+
+  const q = runtime.questions[idx];
+
+  // TSVの想定：QID / 質問文 / 選択肢1..n の形が多いので、柔軟に拾う
+  const qid = q.QID || q.qid || `Q${idx+1}`;
+  const text = q["質問文"] || q["question"] || q["Question"] || q["質問"] || "";
+  const opts = [];
+
+  // 選択肢列（選択肢1..6など）を拾う
+  for (let i=1;i<=10;i++){
+    const key = `選択肢${i}`;
+    if (q[key] != null && String(q[key]).trim() !== "") opts.push({ label: String(q[key]).trim(), opt: optStr(i) });
+  }
+
+  // もし選択肢が拾えない場合、OPT列など別形式も想定してフォールバック（最低限）
+  if (!opts.length){
+    // 例：OPT1..OPT6 形式
+    for (let i=1;i<=10;i++){
+      const key = `OPT${i}`;
+      if (q[key] != null && String(q[key]).trim() !== "") opts.push({ label: String(q[key]).trim(), opt: optStr(i) });
+    }
+  }
+
+  const answered = runtime.answers[qid];
+
+  const pct = Math.round((idx / qTotal) * 100);
+
+  $app.innerHTML = `
+    <div class="row" style="justify-content:space-between;align-items:center;">
+      <span class="pill">進捗 ${idx+1} / ${qTotal}</span>
+      <span class="pill">性別: ${runtime.gender === "male" ? "男性" : "女性/その他"}</span>
+    </div>
+
+    <div class="progress" style="margin-top:10px;">
+      <div class="bar" style="width:${pct}%"></div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="label">${escapeHTML(qid)}</div>
+    <p class="qtitle">${escapeHTML(text)}</p>
+
+    <div id="optArea">
+      ${opts.map(o => `
+        <button class="opt" data-opt="${escapeHTML(o.opt)}">
+          ${escapeHTML(o.label)}
+          ${answered === o.opt ? ' <span class="pill" style="float:right;">選択中</span>' : ''}
+        </button>
+      `).join("")}
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <button class="btn ghost" id="btnPrev" ${idx===0?'disabled':''}>戻る</button>
+      <button class="btn danger" id="btnRestart">最初からやり直す</button>
+    </div>
+
+    <p class="tiny" style="margin-top:10px;">
+      ※回答は進むたびに保存されます（ブラウザ更新でも戻れます）。<br/>
+      ※ただし「結果表示まで到達したら」次回は自動で最初からになります。
+    </p>
+
+    <div id="msg"></div>
+  `;
+
+  // options click
+  document.querySelectorAll("#optArea .opt").forEach(btn=>{
+    btn.onclick = async () => {
+      const opt = btn.getAttribute("data-opt");
+      await answerQuestion(qid, opt);
+    };
+  });
+
+  document.getElementById("btnPrev").onclick = () => {
+    runtime.idx = Math.max(0, runtime.idx - 1);
+    saveLS();
+    render();
+  };
+
+  document.getElementById("btnRestart").onclick = () => {
+    // 手動やり直し（結果到達前なら許可）
+    if (!confirm("最初からやり直しますか？")) return;
+    runtime.sid = newSessionId();
+    runtime.gender = "";
+    runtime.questions = [];
+    runtime.idx = 0;
+    runtime.answers = {};
+    runtime.result = null;
+    localStorage.removeItem(LS.gender);
+    localStorage.removeItem(LS.sid);
+    localStorage.removeItem(LS.answers);
+    localStorage.removeItem(LS.progress);
+    render();
+  };
+}
+
+async function answerQuestion(qid, opt){
+  // 保存（ローカル）
+  runtime.answers[qid] = opt;
+  saveLS();
+
+  // 1問ごとGAS送信（失敗しても続行）
+  const msg = document.getElementById("msg");
+  msg.innerHTML = `<div class="tiny">保存中…</div>`;
+
+  try{
+    const payload = {
+      action: ACTIONS.LOG,
+      sessionId: runtime.sid,
+      gender: runtime.gender,
+      qid,
+      opt,
+      answeredAt: nowISO()
+    };
+    const r = await postGAS(payload);
+    // LOGが未実装でも止めない
+    msg.innerHTML = r?.ok
+      ? `<div class="ok tiny">保存OK</div>`
+      : `<div class="tiny">（保存はローカルのみで継続中）</div>`;
+  }catch(_){
+    msg.innerHTML = `<div class="tiny">（通信が不安定なので、ローカル保存のまま継続します）</div>`;
+  }
+
+  // 次へ
+  runtime.idx += 1;
+  saveLS();
+  render();
+}
+
+function renderName(){
+  $app.innerHTML = `
+    <div class="label">おなまえ（任意）</div>
+    <p class="qtitle">診断結果を、あなたのお名前に変えてお届けします！</p>
+    <input id="nameInput" class="field" placeholder="例）とあ" maxlength="30" />
+    <p class="tiny" style="margin-top:10px;">
+      ※未入力の場合は「あなた」になります。<br/>
+      ※それ以外の目的で名前を使用することはありません。
+    </p>
+    <div class="hr"></div>
+    <button class="btn primary" id="btnFinalize">結果を見る</button>
+    <div id="msg"></div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn ghost" id="btnBack">戻って回答を見直す</button>
     </div>
   `;
-}
 
-/* =============================
-   操作ハンドラ
-============================= */
-async function onPickGender(g){
-  state.loading = true;
-  setMessage("読み込み中…");
+  document.getElementById("btnBack").onclick = () => {
+    // 回答の最後へ戻す
+    runtime.idx = Math.max(0, (runtime.questions?.length || 1) - 1);
+    saveLS();
+    setStep("quiz");
+  };
 
-  // sessionId作成 or 復帰
-  if(!state.sessionId){
-    state.sessionId = uuidv4();
-    saveLS(LS.sessionId, state.sessionId);
-  }
+  document.getElementById("btnFinalize").onclick = async () => {
+    const raw = document.getElementById("nameInput").value.trim();
+    runtime.name = raw ? raw : "あなた";
 
-  state.gender = g;
-  saveLS(LS.gender, state.gender);
+    const msg = document.getElementById("msg");
+    msg.innerHTML = `<div class="tiny">集計中…</div>`;
 
-  try{
-    state.questions = await loadQuestionsByGender(state.gender);
-    state.step = "quiz";
-    state.qIndex = Number(loadLS(LS.progress, 0)) || 0;
-    state.answers = loadLS(LS.answers, {});
-    setMessage("OK: 質問を読み込みました");
-  }catch(e){
-    setMessage("TSV読込エラー: " + (e?.message || e));
-  }finally{
-    state.loading = false;
-    render();
-  }
-}
-
-function onChooseOpt(qid, opt){
-  state.answers[qid] = opt;
-  saveLS(LS.answers, state.answers);
-
-  // progress保存（現qIndexは維持）
-  saveLS(LS.progress, state.qIndex);
-
-  // 1問ごとにGAS送信（失敗してもUIは進める）
-  (async ()=>{
     try{
-      const res = await sendAnswerToGAS({
-        sessionId: state.sessionId,
-        gender: state.gender,
-        qid,
-        opt
+      const r = await postGAS({
+        action: ACTIONS.FINALIZE,
+        sessionId: runtime.sid,
+        gender: runtime.gender,
+        name: runtime.name
       });
-      if(res && res.ok === false){
-        // ここは“致命”じゃないので警告だけ
-        setMessage("送信注意: " + (res.error || "unknown"));
-      }else{
-        // 成功メッセージは出しすぎるとうるさいので黙る
-        setMessage("");
+
+      if (!r?.ok) {
+        msg.innerHTML = `<div class="err">集計に失敗: ${escapeHTML(r?.error || "unknown")}</div>`;
+        return;
       }
-    }catch(e){
-      setMessage("送信注意: GASに届かなかったかも（後でまとめてやり直せます）");
+
+      runtime.result = r;
+
+      // ★ここが仕様の核：結果に到達したら次回は新規にする
+      // sessionId自体は画面内送信用に runtime.sid に残す（localStorageだけ消す）
+      clearLSAfterResult();
+
+      setStep("result");
+    }catch(err){
+      msg.innerHTML = `<div class="err">集計に失敗: ${escapeHTML(err.message)}</div>`;
     }
-  })();
-
-  render();
+  };
 }
 
-function onPrev(){
-  state.qIndex = Math.max(0, state.qIndex - 1);
-  saveLS(LS.progress, state.qIndex);
-  render();
-}
-function onNext(){
-  const q = state.questions[state.qIndex];
-  if(!q) return;
-  if(!state.answers[q.qid]){ setMessage("選択してから次へ！"); return; }
-
-  state.qIndex = Math.min(state.questions.length - 1, state.qIndex + 1);
-  saveLS(LS.progress, state.qIndex);
-  render();
-}
-function onJumpToEnd(){
-  setStep("mbti");
-}
-
-function onMBTIChange(key, val){
-  state.mbti = state.mbti || {};
-  if(!val) delete state.mbti[key];
-  else state.mbti[key] = val;
-  saveLS(LS.mbti, state.mbti);
-}
-function onSkipMBTI(){
-  state.mbti = {};
-  saveLS(LS.mbti, state.mbti);
-  setStep("name");
-}
-function onDoneMBTI(){
-  // 未入力でもOK
-  setStep("name");
-}
-function onNameInput(v){
-  state.name = v;
-  saveLS(LS.name, state.name);
-}
-
-async function onFinalize(){
-  const name = String(state.name || "").trim();
-  const safeName = name ? name : "あなた";
-
-  setMessage("集計中…");
-  try{
-    // MBTIは回答書き込みにすでに入れてる想定なら不要だけど、
-    // ここではUI側保持だけ。必要なら finalize payload に含めてもOK。
-    const res = await postJson(GAS_URL, {
-      action: "finalize",
-      sessionId: state.sessionId,
-      gender: state.gender,
-      name: safeName
-    });
-
-    if(!res.ok){
-      setMessage("集計エラー: " + (res.error || "unknown"));
-      return;
-    }
-
-    state.result = res;
-    saveLS(LS.result, state.result);
-
-    setMessage("OK: 結果を表示しました");
-    setStep("result");
-  }catch(e){
-    setMessage("集計エラー: GASに届かなかったかも");
-  }
-}
-
-async function onSendEmail(){
-  const el = document.getElementById("emailInput");
-  const email = String(el?.value || "").trim();
-
-  if(!email){
-    setMessage("メールアドレスが空です");
-    return;
-  }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    setMessage("メール形式がちょっと怪しいです（例: a@b.com）");
+function renderResult(){
+  const r = runtime.result;
+  if (!r){
+    $app.innerHTML = `<div class="err">結果データがありません。もう一度やり直してください。</div>
+      <div class="hr"></div><button class="btn danger" id="btnRestart">最初から</button>`;
+    document.getElementById("btnRestart").onclick = () => location.reload();
     return;
   }
 
-  setMessage("送信中…");
-  try{
-    const res = await postJson(GAS_URL, { action:"email", sessionId: state.sessionId, email });
-    if(!res.ok){
-      setMessage("送信エラー: " + (res.error || "unknown"));
+  // 見出し
+  const name = escapeHTML(r.name || runtime.name || "あなた");
+  const prefix = escapeHTML(r.prefix || "");
+  const animal = escapeHTML(r.animal || "");
+  const topLabel = `${prefix}${animal}`;
+
+  // 特徴（GASがテキスト返す想定）
+  const animalFeature = escapeHTML(r.features?.animal || "").replace(/\n/g,"<br/>");
+  const prefixFeature = escapeHTML(r.features?.prefix || "").replace(/\n/g,"<br/>");
+
+  const axisTitle = {
+    A:"①思考・意思決定の深層スタイル",
+    B:"②感情との距離感・扱い方",
+    C:"③自己価値感・自己肯定の源泉",
+    D:"④ストレス構造と回復パターン",
+    E:"⑤対人関係・距離感のクセ",
+    F:"⑥親密さ・恋愛における心理傾向",
+    G:"⑦性と自己理解のつながり方",
+    H:"⑧人生の進み方・停滞ポイント"
+  };
+
+  const sectionsHTML = ["A","B","C","D","E","F","G","H"].map(k=>{
+    const txt = escapeHTML(r.sections?.[k] || "").replace(/\n/g,"<br/>");
+    return `
+      <div class="hr"></div>
+      <div class="sectionTitle">${axisTitle[k]}</div>
+      <div class="pre">${txt || "（準備中）"}</div>
+    `;
+  }).join("");
+
+  $app.innerHTML = `
+    <div class="label">診断結果</div>
+    <p class="qtitle">${name}さんは… <span class="pill">${topLabel || "（集計中）"}</span> です！</p>
+
+    <div class="tiny">（イラストは後で差し込み予定）</div>
+
+    <div class="hr"></div>
+    <div class="sectionTitle">${prefix}${animal} の ${name}さんは</div>
+
+    <div class="tiny" style="margin-top:8px;">・動物グループの特徴</div>
+    <div class="mutedBox pre">${animalFeature || "（準備中）"}</div>
+
+    <div class="tiny" style="margin-top:10px;">・接頭語グループの特徴</div>
+    <div class="mutedBox pre">${prefixFeature || "（準備中）"}</div>
+
+    ${sectionsHTML}
+
+    <div class="hr"></div>
+    <div class="sectionTitle">結果をメールで受け取る（任意）</div>
+    <input id="emailInput" class="field" placeholder="example@gmail.com" />
+    <p class="tiny" style="margin-top:10px;">
+      ※結果のメール送信以外の目的で、メールアドレスを使用することはありません。
+    </p>
+    <div class="row">
+      <button class="btn primary" id="btnSendEmail">この結果をメールで送る</button>
+      <button class="btn ghost" id="btnNew">新しく診断する</button>
+    </div>
+    <div id="emailMsg"></div>
+    <p class="tiny" style="margin-top:10px;">
+      ※このページを閉じても、次回アクセス時は自動で最初からになります（結果到達時に端末保存を消しています）。
+    </p>
+  `;
+
+  document.getElementById("btnNew").onclick = () => {
+    // 次回は必ず新規のはずだが、ここでリロードして即新規開始できるように
+    location.reload();
+  };
+
+  document.getElementById("btnSendEmail").onclick = async () => {
+    const email = document.getElementById("emailInput").value.trim();
+    const emailMsg = document.getElementById("emailMsg");
+    if (!email){
+      emailMsg.innerHTML = `<div class="err">メールアドレスを入力してください。</div>`;
       return;
     }
-    if(res.skipped){
-      setMessage("OK: すでに送信済みでした（鉄壁）");
-    }else{
-      setMessage("OK: メール送信しました！");
-    }
-  }catch(e){
-    setMessage("送信エラー: GASに届かなかったかも");
-  }
-}
+    emailMsg.innerHTML = `<div class="tiny">送信中…</div>`;
 
-function resetAll(){
-  delLS();
-  // 状態初期化
-  state.step = "gender";
-  state.gender = null;
-  state.sessionId = null;
-  state.questions = [];
-  state.qIndex = 0;
-  state.answers = {};
-  state.mbti = {};
-  state.name = "";
-  state.result = null;
-  state.loading = false;
-  state.message = "";
-  render();
-}
-
-function clearLocalOnly(){
-  // セッションIDは残しておく（再開したい人もいるので）
-  localStorage.removeItem(LS.answers);
-  localStorage.removeItem(LS.mbti);
-  localStorage.removeItem(LS.progress);
-  localStorage.removeItem(LS.name);
-  localStorage.removeItem(LS.result);
-
-  state.answers = {};
-  state.mbti = {};
-  state.qIndex = 0;
-  state.name = "";
-  state.result = null;
-  setMessage("OK: この端末の保存だけ消しました");
-  render();
-}
-
-/* =============================
-   初期起動：復帰導線
-============================= */
-(async function boot(){
-  // sessionIdがあるなら「復帰」できるようにする
-  if(state.sessionId && state.gender){
     try{
-      state.questions = await loadQuestionsByGender(state.gender);
-      // すでに結果があるなら結果へ、なければ質問へ
-      if(state.result){
-        state.step = "result";
-      }else{
-        state.step = "quiz";
+      const rr = await postGAS({
+        action: ACTIONS.EMAIL,
+        sessionId: runtime.sid, // localStorageは消しても、メモリ上には残ってる
+        email
+      });
+
+      if (!rr?.ok){
+        emailMsg.innerHTML = `<div class="err">送信に失敗: ${escapeHTML(rr?.error || "unknown")}</div>`;
+        return;
       }
-    }catch(e){
-      // TSV読めないなら性別から
-      state.step = "gender";
-      state.questions = [];
+
+      if (rr.skipped){
+        emailMsg.innerHTML = `<div class="ok">すでに送信済みです（重複送信を防止しました）。</div>`;
+      }else{
+        emailMsg.innerHTML = `<div class="ok">送信しました！受信箱をご確認ください。</div>`;
+      }
+    }catch(err){
+      emailMsg.innerHTML = `<div class="err">送信に失敗: ${escapeHTML(err.message)}</div>`;
     }
-  }else{
-    state.step = "gender";
-  }
-  render();
-})();
+  };
+}
 </script>
 </body>
 </html>
-

@@ -28,12 +28,14 @@
     .btn.good{background:linear-gradient(90deg,var(--accent2),#16a34a);border-color:transparent;}
     .btn.ghost{background:transparent}
     .btn.danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
     .label{font-size:12px;color:var(--muted);margin:0 0 8px}
     .progress{height:10px;background:#0a0f22;border:1px solid var(--line);border-radius:999px;overflow:hidden}
     .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#22c55e);transition:width .25s}
     .qtitle{font-size:16px;font-weight:800;margin:0 0 10px;line-height:1.5}
     .opt{display:block;width:100%;text-align:left;margin:10px 0;padding:12px 12px;border-radius:12px;border:1px solid var(--line);background:#0f1733;color:var(--text);cursor:pointer}
     .opt:hover{border-color:#3b4a7a}
+    .opt.selected{outline:2px solid rgba(124,58,237,.55)}
     .tiny{font-size:12px;color:var(--muted);line-height:1.6}
     .field{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0f1733;color:var(--text);font-size:16px}
     select.field{appearance:auto;}
@@ -43,6 +45,12 @@
     .err{color:#fecaca;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.35);padding:10px;border-radius:12px;margin-top:10px}
     .ok{color:#bbf7d0;background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.35);padding:10px;border-radius:12px;margin-top:10px}
     .mutedBox{border:1px dashed var(--line);border-radius:12px;padding:10px;color:var(--muted);line-height:1.7}
+
+    /* 10問表示用 */
+    .qblock{border:1px solid var(--line);border-radius:14px;padding:12px;margin:12px 0;background:#0c1230}
+    .qhead{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap}
+    .qnum{font-weight:800}
+    .qopt{margin:8px 0}
   </style>
 </head>
 <body>
@@ -65,9 +73,13 @@
   </div>
 
 <script>
+/* =========================
+   Config
+========================= */
 const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
 const NEXT_PAGE_URL = "result.html";
 
+// ★GASは今のまま維持：logAnswer を使い続ける
 const ACTIONS = { LOG: "logAnswer" };
 
 const TSV_PATH = {
@@ -76,11 +88,17 @@ const TSV_PATH = {
   mbti: "data/mbti_options.tsv"
 };
 
+// ★10問ずつ
+const PAGE_SIZE = 10;
+
 const LS = {
   gender: "diag_gender",
   sid: "diag_sid",
   answers: "diag_answers",
-  progress: "diag_progress"
+  progress: "diag_progress",
+  // 送信管理
+  sent: "diag_sent",          // 送信済みqid一覧
+  queue: "diag_queue_state",  // キュー状態（未送信配列など）
 };
 
 let runtime = {
@@ -88,15 +106,24 @@ let runtime = {
   sid: "",
   gender: "",
   questions: [],
+  // idx は「次に表示する開始index（0,10,20...）」として使う
   idx: 0,
   answers: {},
   mbtiOptions: null,
+
+  // 送信管理
+  sentMap: {},          // { Q1:true, Q2:true ... }（サーバへ送ったか）
+  pendingOrder: [],     // 未送信qidの順序（キュー）
+  inflight: false,      // 送信中ロック
 };
 
 const $app = document.getElementById("app");
 const $dbgSid = document.getElementById("dbgSid");
 const $dbgStep = document.getElementById("dbgStep");
 
+/* =========================
+   Utils
+========================= */
 function setStep(step){ runtime.step = step; render(); }
 function escapeHTML(s){
   return String(s ?? "")
@@ -108,12 +135,19 @@ function newSessionId(){
   if (crypto?.randomUUID) return crypto.randomUUID();
   return "sid_" + Date.now() + "_" + Math.random().toString(16).slice(2);
 }
+function optStr(n){ return "OPT" + String(n); }
+function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
 
+/* =========================
+   LocalStorage
+========================= */
 function loadLS(){
   const sid = localStorage.getItem(LS.sid);
   const gender = localStorage.getItem(LS.gender);
   const answersRaw = localStorage.getItem(LS.answers);
   const progressRaw = localStorage.getItem(LS.progress);
+  const sentRaw = localStorage.getItem(LS.sent);
+  const queueRaw = localStorage.getItem(LS.queue);
 
   if (sid) runtime.sid = sid;
   if (gender) runtime.gender = gender;
@@ -127,6 +161,16 @@ function loadLS(){
       runtime.idx = Number(p.idx || 0);
     }catch(_){}
   }
+
+  if (sentRaw){
+    try{ runtime.sentMap = JSON.parse(sentRaw) || {}; }catch(_){}
+  }
+  if (queueRaw){
+    try{
+      const q = JSON.parse(queueRaw) || {};
+      runtime.pendingOrder = Array.isArray(q.pendingOrder) ? q.pendingOrder : [];
+    }catch(_){}
+  }
 }
 
 function saveLS(){
@@ -134,6 +178,8 @@ function saveLS(){
   localStorage.setItem(LS.gender, runtime.gender);
   localStorage.setItem(LS.answers, JSON.stringify(runtime.answers || {}));
   localStorage.setItem(LS.progress, JSON.stringify({ idx: runtime.idx, savedAt: nowISO() }));
+  localStorage.setItem(LS.sent, JSON.stringify(runtime.sentMap || {}));
+  localStorage.setItem(LS.queue, JSON.stringify({ pendingOrder: runtime.pendingOrder || [], savedAt: nowISO() }));
 }
 
 function clearLSForRestart(){
@@ -141,8 +187,13 @@ function clearLSForRestart(){
   localStorage.removeItem(LS.sid);
   localStorage.removeItem(LS.answers);
   localStorage.removeItem(LS.progress);
+  localStorage.removeItem(LS.sent);
+  localStorage.removeItem(LS.queue);
 }
 
+/* =========================
+   TSV
+========================= */
 async function loadTSV(path){
   const res = await fetch(path, { cache:"no-store" });
   if (!res.ok) throw new Error(`TSV読込に失敗: ${path}`);
@@ -168,8 +219,9 @@ function parseTSV(tsv){
   return rows;
 }
 
-function optStr(n){ return "OPT" + String(n); }
-
+/* =========================
+   GAS POST (existing)
+========================= */
 async function postGAS(payload){
   const body = new URLSearchParams();
   body.set("payload", JSON.stringify(payload));
@@ -187,7 +239,9 @@ async function postGAS(payload){
   return json;
 }
 
-
+/* =========================
+   Handoff
+========================= */
 function handoffToNextPage(){
   const sid = encodeURIComponent(runtime.sid || "");
   const gender = encodeURIComponent(runtime.gender || "");
@@ -195,6 +249,9 @@ function handoffToNextPage(){
   location.replace(url);
 }
 
+/* =========================
+   MBTI helpers (same)
+========================= */
 function normalizeMbtiType(type){
   const t = String(type || "").toUpperCase().replace(/[^EISNTFJP]/g,"");
   return (t.length === 4) ? t : "";
@@ -204,7 +261,6 @@ function inferMbtiAxesFromType(type){
   if (!t) return {MBTI1:"",MBTI2:"",MBTI3:"",MBTI4:""};
   return {MBTI1:t[0], MBTI2:t[1], MBTI3:t[2], MBTI4:t[3]};
 }
-
 async function loadMbtiOptions(){
   const rows = await loadTSV(TSV_PATH.mbti);
   const opts = [];
@@ -245,6 +301,9 @@ async function loadMbtiOptions(){
   return uniq;
 }
 
+/* =========================
+   Init
+========================= */
 async function init(){
   loadLS();
   if (!runtime.sid) runtime.sid = newSessionId();
@@ -253,17 +312,23 @@ async function init(){
 }
 init();
 
+/* =========================
+   Render router
+========================= */
 function render(){
   $dbgSid.textContent = runtime.sid || "";
   $dbgStep.textContent = runtime.step || "";
 
   if (runtime.step === "landing") return renderLanding();
   if (runtime.step === "gender") return renderGender();
-  if (runtime.step === "quiz") return renderQuiz();
+  if (runtime.step === "quiz") return renderQuiz10();
   if (runtime.step === "mbti") return renderMbti();
   if (runtime.step === "handoff") return renderHandoff();
 }
 
+/* =========================
+   Landing / Gender (mostly same)
+========================= */
 function renderLanding(){
   const hasProgress = !!(runtime.gender && (runtime.idx > 0 || Object.keys(runtime.answers||{}).length > 0));
 
@@ -298,7 +363,12 @@ function renderLanding(){
   document.getElementById("btnResume").onclick = async () => {
     try{
       runtime.questions = await loadTSV(runtime.gender === "male" ? TSV_PATH.male : TSV_PATH.female);
+      // idx は 0,10,20... に丸める
+      runtime.idx = Math.floor((runtime.idx || 0) / PAGE_SIZE) * PAGE_SIZE;
+      saveLS();
       setStep("quiz");
+      // 再開時も送信キューを回す（未送信があれば勝手に送る）
+      pumpSendQueue_();
     }catch(err){
       $app.innerHTML = `<div class="err">TSV読込エラー: ${escapeHTML(err.message)}</div>
         <div class="hr"></div>
@@ -309,14 +379,7 @@ function renderLanding(){
 
   document.getElementById("btnNewStart").onclick = () => {
     if (!confirm("保存データを破棄して最初からにしますか？")) return;
-    runtime.sid = newSessionId();
-    runtime.gender = "";
-    runtime.questions = [];
-    runtime.idx = 0;
-    runtime.answers = {};
-    runtime.mbtiOptions = null;
-    clearLSForRestart();
-    render();
+    hardReset_();
   };
 }
 
@@ -350,7 +413,14 @@ async function startQuizWithGender(gender){
   runtime.questions = [];
   runtime.mbtiOptions = null;
 
+  // 新セッション
   runtime.sid = newSessionId();
+
+  // 送信管理も初期化
+  runtime.sentMap = {};
+  runtime.pendingOrder = [];
+  runtime.inflight = false;
+
   saveLS();
 
   try{
@@ -366,9 +436,12 @@ async function startQuizWithGender(gender){
   setStep("quiz");
 }
 
-function renderQuiz(){
+/* =========================
+   Quiz (10 questions per page)
+========================= */
+function renderQuiz10(){
   const qTotal = runtime.questions.length || 0;
-  const idx = runtime.idx;
+  const start = runtime.idx;
 
   if (!qTotal){
     $app.innerHTML = `
@@ -380,47 +453,38 @@ function renderQuiz(){
     return;
   }
 
-  if (idx >= qTotal){
+  if (start >= qTotal){
+    // 全部終わり
     $app.innerHTML = `
       <div class="label">回答完了（Q1〜Q${qTotal}）</div>
       <p class="qtitle">おつかれ！最後にMBTI（任意）を聞いて、次へ進みます。</p>
+      <div class="mutedBox tiny" style="margin:10px 0;">
+        ※未送信が残っている場合はバックグラウンドで送信を継続します。
+      </div>
       <button class="btn good" id="btnToMbti">MBTI入力へ進む</button>
-      <p class="tiny" style="margin-top:10px;">
-        ※MBTIは未入力でもOKです。
-      </p>
+      <div id="msg"></div>
     `;
     document.getElementById("btnToMbti").onclick = () => setStep("mbti");
+    // 最終ページでも送信回す
+    pumpSendQueue_({ statusElId: "msg" });
     return;
   }
 
-  const q = runtime.questions[idx];
-  const qid = q.QID || q.qid || `Q${idx+1}`;
-  const text = q["質問文"] || q["question"] || q["Question"] || q["質問"] || "";
+  const end = Math.min(start + PAGE_SIZE, qTotal);
+  const slice = runtime.questions.slice(start, end);
 
-  // ===== B：選択肢を「番号が大きい順」にする（10→1） =====
-  const opts = [];
-  for (let i=10;i>=1;i--){
-    const key = `選択肢${i}`;
-    if (q[key] != null && String(q[key]).trim() !== "") {
-      opts.push({ label: String(q[key]).trim(), opt: optStr(i) });
-    }
-  }
-  if (!opts.length){
-    for (let i=10;i>=1;i--){
-      const key = `OPT${i}`;
-      if (q[key] != null && String(q[key]).trim() !== "") {
-        opts.push({ label: String(q[key]).trim(), opt: optStr(i) });
-      }
-    }
-  }
-  // ================================================
+  const answeredCount = countAnswered_();
+  const pct = Math.round((answeredCount / qTotal) * 100);
 
-  const answered = runtime.answers[qid];
-  const pct = Math.round((idx / qTotal) * 100);
+  const pageAnswered = slice.filter(q => {
+    const qid = getQid_(q, start);
+    return !!runtime.answers[qid];
+  }).length;
 
   $app.innerHTML = `
     <div class="row" style="justify-content:space-between;align-items:center;">
-      <span class="pill">進捗 ${idx+1} / ${qTotal}</span>
+      <span class="pill">進捗 ${answeredCount} / ${qTotal}</span>
+      <span class="pill">今 ${start+1}〜${end} 問目</span>
       <span class="pill">性別: ${runtime.gender === "male" ? "男性" : "女性/その他"}</span>
     </div>
 
@@ -430,86 +494,291 @@ function renderQuiz(){
 
     <div class="hr"></div>
 
-    <div class="label">${escapeHTML(qid)}</div>
-    <p class="qtitle">${escapeHTML(text)}</p>
+    <div class="mutedBox tiny">
+      このページは ${PAGE_SIZE}問まとめて回答できます。<br/>
+      ローカル保存は即時。送信は「10問たまったら」まとめて行い、通信は同時に走らないよう制御しています。
+    </div>
 
-    <div id="optArea">
-      ${opts.map(o => `
-        <button class="opt" data-opt="${escapeHTML(o.opt)}">
-          ${escapeHTML(o.label)}
-          ${answered === o.opt ? ' <span class="pill" style="float:right;">選択中</span>' : ''}
-        </button>
-      `).join("")}
+    <div id="qList">
+      ${slice.map((q, i) => renderQBlock_(q, start, i)).join("")}
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row">
+      <button class="btn ghost" id="btnPrevPage" ${start===0?'disabled':''}>前の10問</button>
+      <button class="btn primary" id="btnNextPage" ${pageAnswered < slice.length ? 'disabled' : ''}>
+        次の10問へ
+      </button>
     </div>
 
     <div class="row" style="margin-top:10px;">
-      <button class="btn ghost" id="btnPrev" ${idx===0?'disabled':''}>戻る</button>
+      <button class="btn good" id="btnSendNow">今すぐ送信する</button>
       <button class="btn danger" id="btnRestart">最初からやり直す</button>
     </div>
 
     <p class="tiny" style="margin-top:10px;">
-      ※回答は進むたびに保存されます（ブラウザ更新でも戻れます）。<br/>
-      ※通信が弱いときでもローカル保存は残ります。
+      ※「次の10問へ」は、このページの全問が回答済みで押せます。<br/>
+      ※爆速で回答しても送信は1本ずつ（キュー）で処理します。
     </p>
 
     <div id="msg"></div>
   `;
 
-  document.querySelectorAll("#optArea .opt").forEach(btn=>{
-    btn.onclick = async () => {
+  // 選択肢クリック
+  document.querySelectorAll("[data-qid][data-opt]").forEach(btn => {
+    btn.onclick = () => {
+      const qid = btn.getAttribute("data-qid");
       const opt = btn.getAttribute("data-opt");
-      await answerQuestion(qid, opt);
+      onAnswer_(qid, opt);
     };
   });
 
-  document.getElementById("btnPrev").onclick = () => {
-    runtime.idx = Math.max(0, runtime.idx - 1);
+  document.getElementById("btnPrevPage").onclick = () => {
+    runtime.idx = clamp(runtime.idx - PAGE_SIZE, 0, qTotal);
     saveLS();
     render();
   };
 
+  document.getElementById("btnNextPage").onclick = () => {
+    // ここで“ページ分が埋まってる”の最終チェック
+    if (!isPageComplete_(slice, start)) return;
+    runtime.idx = clamp(runtime.idx + PAGE_SIZE, 0, qTotal);
+    saveLS();
+    render();
+    // 次ページ表示してても、送信は裏で継続OK
+    pumpSendQueue_();
+  };
+
+  document.getElementById("btnSendNow").onclick = async () => {
+    await pumpSendQueue_({ force: true, statusElId: "msg" });
+  };
+
   document.getElementById("btnRestart").onclick = () => {
     if (!confirm("最初からやり直しますか？")) return;
-    runtime.sid = newSessionId();
-    runtime.gender = "";
-    runtime.questions = [];
-    runtime.idx = 0;
-    runtime.answers = {};
-    runtime.mbtiOptions = null;
-    clearLSForRestart();
-    render();
+    hardReset_();
   };
+
+  // 初回描画時に送信キュー回す（未送信があれば勝手に送る）
+  pumpSendQueue_({ statusElId: "msg" }).catch(()=>{});
 }
 
-async function answerQuestion(qid, opt){
-  runtime.answers[qid] = opt;
-  saveLS();
+function renderQBlock_(q, pageStart, i){
+  const idx = pageStart + i;
+  const qid = getQid_(q, idx);
+  const text = q["質問文"] || q["question"] || q["Question"] || q["質問"] || "";
+  const answered = runtime.answers[qid] || "";
 
-  const msg = document.getElementById("msg");
-  msg.innerHTML = `<div class="tiny">保存中…</div>`;
-
-  try{
-    const payload = {
-      action: ACTIONS.LOG,
-      sessionId: runtime.sid,
-      gender: runtime.gender,
-      qid,
-      opt,
-      answeredAt: nowISO()
-    };
-    const r = await postGAS(payload);
-    msg.innerHTML = r?.ok
-      ? `<div class="ok tiny">保存OK</div>`
-      : `<div class="tiny">（保存はローカルのみで継続中）</div>`;
-  }catch(_){
-    msg.innerHTML = `<div class="tiny">（通信が不安定なので、ローカル保存のまま継続します）</div>`;
+  // 選択肢は「10→1」
+  const opts = [];
+  for (let n=10;n>=1;n--){
+    const key = `選択肢${n}`;
+    if (q[key] != null && String(q[key]).trim() !== "") {
+      opts.push({ label: String(q[key]).trim(), opt: optStr(n) });
+    }
+  }
+  if (!opts.length){
+    for (let n=10;n>=1;n--){
+      const key = `OPT${n}`;
+      if (q[key] != null && String(q[key]).trim() !== "") {
+        opts.push({ label: String(q[key]).trim(), opt: optStr(n) });
+      }
+    }
   }
 
-  runtime.idx += 1;
+  const sent = !!runtime.sentMap[qid];
+  const sentPill = sent ? `<span class="pill">送信済</span>` : `<span class="pill">未送信</span>`;
+
+  return `
+    <div class="qblock" id="block_${escapeHTML(qid)}">
+      <div class="qhead">
+        <div class="qnum">${escapeHTML(qid)}</div>
+        <div class="row" style="gap:6px;flex:0;">
+          ${sentPill}
+          ${answered ? `<span class="pill">回答済</span>` : `<span class="pill">未回答</span>`}
+        </div>
+      </div>
+      <div class="qtitle">${escapeHTML(text)}</div>
+      <div class="qopt">
+        ${opts.map(o => {
+          const sel = (answered === o.opt);
+          return `
+            <button class="opt ${sel ? "selected":""}"
+              data-qid="${escapeHTML(qid)}"
+              data-opt="${escapeHTML(o.opt)}">
+              ${escapeHTML(o.label)}
+              ${sel ? ' <span class="pill" style="float:right;">選択中</span>' : ''}
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function getQid_(q, absoluteIdx){
+  return q.QID || q.qid || `Q${absoluteIdx+1}`;
+}
+
+function countAnswered_(){
+  // Q1..Qn を想定（TSVのQIDがある場合も、それに合わせる）
+  // ここは単純に answers のうち "Q" で始まるものを数える
+  return Object.keys(runtime.answers || {}).filter(k => /^Q\d+$/.test(k)).length;
+}
+
+function isPageComplete_(slice, pageStart){
+  for (let i=0;i<slice.length;i++){
+    const qid = getQid_(slice[i], pageStart + i);
+    if (!runtime.answers[qid]) return false;
+  }
+  return true;
+}
+
+/* =========================
+   Answer handling: local save + queue
+========================= */
+function onAnswer_(qid, opt){
+  // 1) ローカル保存即時
+  runtime.answers[qid] = opt;
+
+  // 2) 未送信ならキューへ（重複防止）
+  if (!runtime.sentMap[qid]){
+    if (!runtime.pendingOrder.includes(qid)) runtime.pendingOrder.push(qid);
+  }
+
   saveLS();
+
+  // 3) このページだけ再描画（全部renderだと重いので必要最小限）
+  refreshBlockUI_(qid);
+
+  // 4) 次へボタン活性/非活性
+  refreshNextButton_();
+
+  // 5) 10問たまったら送信開始（裏で）
+  if (runtime.pendingOrder.length >= PAGE_SIZE){
+    pumpSendQueue_().catch(()=>{});
+  }
+}
+
+function refreshBlockUI_(qid){
+  const block = document.getElementById("block_" + qid);
+  if (!block) { render(); return; } // 念のため
+  // ブロックだけ作り直すのは面倒なので、素直にページ再描画（でも10問なので十分軽い）
   render();
 }
 
+function refreshNextButton_(){
+  const btn = document.getElementById("btnNextPage");
+  if (!btn) return;
+  const qTotal = runtime.questions.length || 0;
+  const start = runtime.idx;
+  const end = Math.min(start + PAGE_SIZE, qTotal);
+  const slice = runtime.questions.slice(start, end);
+  btn.disabled = !isPageComplete_(slice, start);
+}
+
+/* =========================
+   Send queue (NO concurrent)
+   - "10問まとめて送信" = キューから最大10件取り出し
+   - ただしGASは既存 logAnswer を使うため、内部で1件ずつ順番にPOST
+========================= */
+async function pumpSendQueue_(opts={}){
+  const force = !!opts.force;
+  const statusElId = opts.statusElId || null;
+
+  const statusEl = statusElId ? document.getElementById(statusElId) : null;
+
+  if (runtime.inflight) {
+    if (statusEl) statusEl.innerHTML = `<div class="tiny">（送信中…）</div>`;
+    return;
+  }
+
+  // 送るものがない
+  const unsent = runtime.pendingOrder.filter(qid => !runtime.sentMap[qid] && !!runtime.answers[qid]);
+  if (unsent.length === 0) {
+    if (statusEl) statusEl.innerHTML = `<div class="tiny">（未送信はありません）</div>`;
+    return;
+  }
+
+  // 10件ずつ
+  const batch = force ? unsent.slice(0, PAGE_SIZE) : (unsent.length >= PAGE_SIZE ? unsent.slice(0, PAGE_SIZE) : []);
+  if (!force && batch.length === 0){
+    // 10件未満は“自動送信しない”（=通信節約）。必要なら「今すぐ送信」で送れる
+    if (statusEl) statusEl.innerHTML = `<div class="tiny">（未送信が ${unsent.length} 件あります。10件たまると自動送信します）</div>`;
+    return;
+  }
+
+  runtime.inflight = true;
+  saveLS();
+
+  if (statusEl) statusEl.innerHTML = `<div class="tiny">送信中…（${batch.length}件）</div>`;
+
+  let okCount = 0;
+  let failCount = 0;
+
+  for (const qid of batch){
+    try{
+      const payload = {
+        action: ACTIONS.LOG, // ★既存
+        sessionId: runtime.sid,
+        gender: runtime.gender,
+        qid,
+        opt: runtime.answers[qid],
+        answeredAt: nowISO()
+      };
+
+      const r = await postGAS(payload);
+
+      if (r && r.ok){
+        runtime.sentMap[qid] = true;
+        okCount++;
+      } else {
+        failCount++;
+      }
+    }catch(_){
+      failCount++;
+    }
+
+    // 送れたものは pendingOrder から取り除く（失敗は残す）
+    runtime.pendingOrder = runtime.pendingOrder.filter(x => x !== qid || !runtime.sentMap[x]);
+    saveLS();
+  }
+
+  runtime.inflight = false;
+  saveLS();
+
+  if (statusEl){
+    if (failCount === 0){
+      statusEl.innerHTML = `<div class="ok tiny">送信OK：${okCount}件</div>`;
+    } else {
+      statusEl.innerHTML = `<div class="err tiny">送信：OK ${okCount}件 / 失敗 ${failCount}件（通信が落ち着いたら「今すぐ送信」で再送できます）</div>`;
+    }
+  }
+
+  // まだ10件以上溜まってたら続けて送る（自動で連続送信）
+  const stillUnsent = runtime.pendingOrder.filter(qid => !runtime.sentMap[qid] && !!runtime.answers[qid]);
+  if (stillUnsent.length >= PAGE_SIZE){
+    await pumpSendQueue_(opts);
+  }
+}
+
+function hardReset_(){
+  runtime.sid = newSessionId();
+  runtime.gender = "";
+  runtime.questions = [];
+  runtime.idx = 0;
+  runtime.answers = {};
+  runtime.mbtiOptions = null;
+  runtime.sentMap = {};
+  runtime.pendingOrder = [];
+  runtime.inflight = false;
+  clearLSForRestart();
+  render();
+}
+
+/* =========================
+   MBTI view (same, but send via existing logAnswer)
+========================= */
 function renderMbti(){
   $app.innerHTML = `
     <div class="label">MBTI（任意）</div>
@@ -535,7 +804,9 @@ function renderMbti(){
   `;
 
   document.getElementById("btnBackToQuiz").onclick = () => {
-    runtime.idx = Math.max(0, (runtime.questions?.length || 1) - 1);
+    // 最後のページへ戻す
+    const qTotal = runtime.questions.length || 0;
+    runtime.idx = Math.floor((Math.max(0, qTotal-1)) / PAGE_SIZE) * PAGE_SIZE;
     saveLS();
     setStep("quiz");
   };
@@ -581,6 +852,9 @@ async function saveMbtiAndHandoff(){
   const msg = document.getElementById("msg");
   msg.innerHTML = `<div class="tiny">送信準備中…</div>`;
 
+  // まず未送信が残ってたら送っておく（強制）
+  await pumpSendQueue_({ force: true, statusElId: "msg" });
+
   const sel = document.getElementById("mbtiSelect");
   const type = sel ? normalizeMbtiType(sel.value) : "";
 
@@ -601,6 +875,7 @@ async function saveMbtiAndHandoff(){
     saveLS();
 
     try{
+      // ★MBTIだけは従来通り単発送信（GAS側は logAnswer のMBTI分岐でOK）
       const r = await postGAS({
         action: ACTIONS.LOG,
         sessionId: runtime.sid,

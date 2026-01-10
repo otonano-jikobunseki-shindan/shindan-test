@@ -69,23 +69,16 @@
    設定
 ========================= */
 const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
+const NEXT_PAGE_URL = "result.html";
 
-// quiz.html の仕事は「回答送信（log）→次ページへ引き継ぎ」まで。
-// 結果表示・finalize・emailは別ファイル側で実装してください。
-const NEXT_PAGE_URL = "result.html"; // ←次ページのファイル名に合わせて変更
+const ACTIONS = { LOG: "logAnswer" };
 
-const ACTIONS = {
-  LOG: "logAnswer"
-};
-
-// TSVファイル
 const TSV_PATH = {
   male: "data/male_questions.tsv",
   female: "data/female_questions.tsv",
   mbti: "data/mbti_options.tsv"
 };
 
-// localStorage keys
 const LS = {
   gender: "diag_gender",
   sid: "diag_sid",
@@ -99,8 +92,8 @@ let runtime = {
   gender: "",
   questions: [],
   idx: 0,
-  answers: {},        // Q1..: OPTx, MBTI/MBTI1..4
-  mbtiOptions: null,  // [{label,type,MBTI1..4}]
+  answers: {},
+  mbtiOptions: null,
 };
 
 const $app = document.getElementById("app");
@@ -149,8 +142,16 @@ function saveLS(){
   localStorage.setItem(LS.progress, JSON.stringify({ idx: runtime.idx, savedAt: nowISO() }));
 }
 
+// 元の全消し
 function clearLSForRestart(){
   localStorage.removeItem(LS.gender);
+  localStorage.removeItem(LS.sid);
+  localStorage.removeItem(LS.answers);
+  localStorage.removeItem(LS.progress);
+}
+
+// ★追加：genderだけ残す全消し（③）
+function clearLSForRestartKeepGender(){
   localStorage.removeItem(LS.sid);
   localStorage.removeItem(LS.answers);
   localStorage.removeItem(LS.progress);
@@ -163,7 +164,6 @@ async function loadTSV(path){
   return parseTSV(text);
 }
 
-// TSVパーサ：ヘッダー空欄は "__col0" "__col1"… に自動変換（今回MBTI TSVの先頭空欄に対応）
 function parseTSV(tsv){
   const lines = tsv.replace(/\r/g,"").split("\n").filter(l => l.trim() !== "");
   if (lines.length < 2) return [];
@@ -204,15 +204,12 @@ function handoffToNextPage(){
 }
 
 /* =========================
-   MBTI options（あなたのTSV形式に固定対応）
-   - 先頭列: "ENFP（運動家）"
-   - MBTI1..4 列あり
+   MBTI options
 ========================= */
 function normalizeMbtiType(type){
   const t = String(type || "").toUpperCase().replace(/[^EISNTFJP]/g,"");
   return (t.length === 4) ? t : "";
 }
-
 function inferMbtiAxesFromType(type){
   const t = normalizeMbtiType(type);
   if (!t) return {MBTI1:"",MBTI2:"",MBTI3:"",MBTI4:""};
@@ -224,17 +221,14 @@ async function loadMbtiOptions(){
   const opts = [];
 
   for (const r of rows){
-    // あなたのTSV：先頭列（ヘッダー空）→ parseTSVで "__col0" になる
     const label = (r["表示名"] || r["表示"] || r["Label"] || r["__col0"] || "").trim();
     if (!label) continue;
 
-    // labelの先頭4文字からタイプを取り出す（ENFP etc）
     const m = label.match(/^([EI][SN][TF][JP])/i);
     if (!m) continue;
     const type = normalizeMbtiType(m[1]);
     if (!type) continue;
 
-    // MBTI1..4（TSVが正ならここが最優先）
     const axes = {
       MBTI1: (r.MBTI1 || "").trim(),
       MBTI2: (r.MBTI2 || "").trim(),
@@ -244,8 +238,8 @@ async function loadMbtiOptions(){
     const inferred = inferMbtiAxesFromType(type);
 
     opts.push({
-      label, // ←プルダウン表示はこれ（ENFP（運動家））
-      type,  // ←ロジック用（ENFP）
+      label,
+      type,
       MBTI1: axes.MBTI1 || inferred.MBTI1,
       MBTI2: axes.MBTI2 || inferred.MBTI2,
       MBTI3: axes.MBTI3 || inferred.MBTI3,
@@ -253,7 +247,6 @@ async function loadMbtiOptions(){
     });
   }
 
-  // type重複除去
   const seen = new Set();
   const uniq = [];
   for (const o of opts){
@@ -332,16 +325,33 @@ function renderLanding(){
     }
   };
 
+  // ★③：genderは残す / Q1に戻せるようにする
   document.getElementById("btnNewStart").onclick = () => {
     if (!confirm("保存データを破棄して最初からにしますか？")) return;
+
+    const keepGender = runtime.gender || localStorage.getItem(LS.gender) || "";
+
     runtime.sid = newSessionId();
-    runtime.gender = "";
-    runtime.questions = [];
+    runtime.gender = keepGender;
     runtime.idx = 0;
     runtime.answers = {};
     runtime.mbtiOptions = null;
-    clearLSForRestart();
-    render();
+
+    clearLSForRestartKeepGender();
+    saveLS();
+
+    if (runtime.gender){
+      (async () => {
+        try{
+          runtime.questions = await loadTSV(runtime.gender === "male" ? TSV_PATH.male : TSV_PATH.female);
+          setStep("quiz");
+        }catch(_){
+          setStep("gender");
+        }
+      })();
+    }else{
+      setStep("gender");
+    }
   };
 }
 
@@ -407,7 +417,6 @@ function renderQuiz(){
     return;
   }
 
-  // Qが終わったらMBTIへ
   if (idx >= qTotal){
     $app.innerHTML = `
       <div class="label">回答完了（Q1〜Q${qTotal}）</div>
@@ -422,17 +431,18 @@ function renderQuiz(){
   }
 
   const q = runtime.questions[idx];
-
   const qid = q.QID || q.qid || `Q${idx+1}`;
   const text = q["質問文"] || q["question"] || q["Question"] || q["質問"] || "";
+
   const opts = [];
 
-  for (let i=1;i<=10;i++){
+  // ★②：選択肢は上から「番号が大きい順」＝10→1
+  for (let i=10;i>=1;i--){
     const key = `選択肢${i}`;
     if (q[key] != null && String(q[key]).trim() !== "") opts.push({ label: String(q[key]).trim(), opt: optStr(i) });
   }
   if (!opts.length){
-    for (let i=1;i<=10;i++){
+    for (let i=10;i>=1;i--){
       const key = `OPT${i}`;
       if (q[key] != null && String(q[key]).trim() !== "") opts.push({ label: String(q[key]).trim(), opt: optStr(i) });
     }
@@ -491,16 +501,27 @@ function renderQuiz(){
     render();
   };
 
-  document.getElementById("btnRestart").onclick = () => {
+  // ★③：genderは残す / Q1に戻る
+  document.getElementById("btnRestart").onclick = async () => {
     if (!confirm("最初からやり直しますか？")) return;
+
+    const keepGender = runtime.gender;
+
     runtime.sid = newSessionId();
-    runtime.gender = "";
-    runtime.questions = [];
+    runtime.gender = keepGender;
     runtime.idx = 0;
     runtime.answers = {};
     runtime.mbtiOptions = null;
-    clearLSForRestart();
-    render();
+
+    clearLSForRestartKeepGender();
+    saveLS();
+
+    try{
+      runtime.questions = await loadTSV(runtime.gender === "male" ? TSV_PATH.male : TSV_PATH.female);
+      setStep("quiz");
+    }catch(_){
+      setStep("gender");
+    }
   };
 }
 
@@ -626,7 +647,6 @@ async function saveMbtiAndHandoff(){
     runtime.answers.MBTI4 = axes.MBTI4;
     saveLS();
 
-    // MBTIもログ送信（GAS側が未対応でも止めない）
     try{
       const r = await postGAS({
         action: ACTIONS.LOG,
@@ -641,11 +661,9 @@ async function saveMbtiAndHandoff(){
         answeredAt: nowISO()
       });
 
-      if (r?.ok){
-        msg.innerHTML = `<div class="ok">MBTIも送信しました。次ページへ移動します。</div>`;
-      }else{
-        msg.innerHTML = `<div class="tiny">（MBTIの送信はローカル保存のみで継続）次ページへ移動します。</div>`;
-      }
+      msg.innerHTML = r?.ok
+        ? `<div class="ok">MBTIも送信しました。次ページへ移動します。</div>`
+        : `<div class="tiny">（MBTIの送信はローカル保存のみで継続）次ページへ移動します。</div>`;
     }catch(_){
       msg.innerHTML = `<div class="tiny">（通信が不安定なのでMBTIはローカル保存のみ）次ページへ移動します。</div>`;
     }

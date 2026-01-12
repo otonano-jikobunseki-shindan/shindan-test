@@ -352,6 +352,10 @@ let runtime = {
   // アイドルタイマー
   idleTimer: null,
   lastActivityAt: 0,
+
+  // ★追加：handoff多重遷移防止
+  handoffTimer: null,
+  handoffBusy: false,
 };
 
 const $app = document.getElementById("app");
@@ -846,24 +850,11 @@ function renderQuiz10(){
     return;
   }
 
+  // ★変更：完了画面を挟まず、idxが末尾ならMBTIへ直行
   if (start >= qTotal){
-    $app.innerHTML = `
-      <div class="label">回答完了（Q1〜Q${qTotal}）</div>
-      <p class="qtitle">おつかれ！最後にMBTI（任意）を聞いて、次へ進みます。</p>
-      <div class="mutedBox tiny" style="margin:10px 0;">
-        ※未送信が残っている場合は「未送信を送る」で送れます。
-      </div>
-      <div class="row">
-        <button class="btn good" id="btnToMbti">MBTI入力へ進む</button>
-        <button class="btn primary" id="btnSendAll">未送信を送る</button>
-      </div>
-      <div id="msg"></div>
-    `;
-    document.getElementById("btnToMbti").onclick = () => setStep("mbti");
-    document.getElementById("btnSendAll").onclick = async () => {
-      await sendAllUnsentUpTo10_({ statusElId: "msg" });
-    };
+    setStep("mbti");
     touchActivity_();
+    setTimeout(scrollToPageTop_, 0);
     return;
   }
 
@@ -877,6 +868,10 @@ function renderQuiz10(){
     const qid = getQid_(q, start + i);
     return !!runtime.answers[qid];
   }).length;
+
+  // ★変更：最後のページだけ「回答完了！」にする
+  const isLastPage = (end >= qTotal);
+  const nextLabel = isLastPage ? "回答完了！" : "次の10問へ";
 
   $app.innerHTML = `
     <div class="row" style="justify-content:space-between;align-items:center;">
@@ -893,7 +888,7 @@ function renderQuiz10(){
 
     <div class="mutedBox tiny">
       このページは10問まとめて回答できます。<br/>
-      送信は「次へ」または「今すぐ送信」、もしくは「10秒停止」で途中送信が走ります。<br/>
+      送信は「${escapeHTML(nextLabel)}」または「今すぐ送信」、もしくは「10秒停止」で途中送信が走ります。<br/>
       ブラウザを閉じる場合も、未送信があれば自動送信（sendBeacon）します。
     </div>
 
@@ -906,7 +901,7 @@ function renderQuiz10(){
     <div class="row">
       <button class="btn ghost" id="btnPrevPage" ${start===0?'disabled':''}>前の10問</button>
       <button class="btn primary" id="btnNextPage" ${pageAnswered < slice.length ? 'disabled' : ''}>
-        次の10問へ
+        ${escapeHTML(nextLabel)}
       </button>
     </div>
 
@@ -916,7 +911,7 @@ function renderQuiz10(){
     </div>
 
     <p class="tiny" style="margin-top:10px;">
-      ※「次の10問へ」は、このページの全問が回答済みで押せます。<br/>
+      ※ボタンは、このページの全問が回答済みで押せます。<br/>
       ※通信が不安定でもローカル保存は残ります。
     </p>
 
@@ -944,9 +939,17 @@ function renderQuiz10(){
   document.getElementById("btnNextPage").onclick = async () => {
     if (!isPageComplete_(slice, start)) return;
 
-    // ★変更：送信を「待たずに」先に次ページ表示（裏送信）
+    // ★送信を「待たずに」先に画面遷移（裏送信）
     const targets = currentPageTargets_(); // この瞬間の対象を確定
     sendTargetsInBackground_(targets);
+
+    if (isLastPage){
+      // ★変更：完了画面を挟まず、MBTIへ即移動
+      setStep("mbti");
+      touchActivity_();
+      setTimeout(scrollToPageTop_, 0);
+      return;
+    }
 
     runtime.idx = clamp(runtime.idx + PAGE_SIZE, 0, qTotal);
     saveLS();
@@ -1200,6 +1203,101 @@ async function sendAllUnsentUpTo10_(opts={}){
   }
 }
 
+/* =========================
+   ★追加：MBTI完了後に未送信を再送（最大50件＝10件×5回）
+========================= */
+async function resendAllUnsentAfterMbti_(opts={}){
+  const statusElId = opts.statusElId || null;
+  const statusEl = statusElId ? document.getElementById(statusElId) : null;
+
+  // 送信中なら触らない（この関数はhandoffで呼ぶ想定）
+  if (runtime.inflight) return;
+
+  const allQids = Object.keys(runtime.answers || {}).filter(k => /^Q\d+$/.test(k) && !!runtime.answers[k]);
+  const unsent = allQids.filter(qid => !runtime.sentMap[qid]);
+
+  if (unsent.length === 0){
+    if (statusEl) statusEl.innerHTML = `<div class="ok tiny">送信漏れはありません。</div>`;
+    return;
+  }
+
+  if (statusEl) statusEl.innerHTML = `<div class="tiny">送信漏れを再送しています…（${unsent.length}件）</div>`;
+
+  // 最大5回（50件）を想定。必要なら増やせるが今回は最小。
+  const maxLoops = Math.ceil(Math.min(unsent.length, 50) / PAGE_SIZE);
+  for (let i=0;i<maxLoops;i++){
+    const chunkQids = Object.keys(runtime.answers || {})
+      .filter(k => /^Q\d+$/.test(k) && !!runtime.answers[k])
+      .filter(qid => !runtime.sentMap[qid])
+      .slice(0, PAGE_SIZE);
+
+    if (chunkQids.length === 0) break;
+
+    const targets = chunkQids.map(qid => ({ qid, opt: runtime.answers[qid] }));
+
+    runtime.inflight = true;
+    saveLS();
+
+    try{
+      const r = await postGAS({
+        action: ACTIONS.BATCH,
+        sessionId: runtime.sid,
+        gender: runtime.gender,
+        answeredAt: nowISO(),
+        answers: targets
+      });
+
+      if (r?.ok){
+        targets.forEach(x => runtime.sentMap[x.qid] = true);
+        saveLS();
+      }
+    }catch(_){
+      // 失敗したら次チャンクへは行くが、sentMapは残るので次回また拾える
+    }finally{
+      runtime.inflight = false;
+      saveLS();
+    }
+  }
+
+  const remaining = Object.keys(runtime.answers || {})
+    .filter(k => /^Q\d+$/.test(k) && !!runtime.answers[k])
+    .filter(qid => !runtime.sentMap[qid]).length;
+
+  if (statusEl){
+    statusEl.innerHTML = remaining === 0
+      ? `<div class="ok tiny">再送完了：送信漏れは解消しました。</div>`
+      : `<div class="err tiny">一部送信できていない可能性があります（残り ${remaining}件）。通信が安定したら再度試行してください。</div>`;
+  }
+}
+
+/* =========================
+   ★追加：集計開始シグナル送信（sendBeacon優先）
+========================= */
+function signalStartAggregate_(){
+  try{
+    const payload = {
+      action: ACTIONS.START_AGG,
+      sessionId: runtime.sid,
+      gender: runtime.gender,
+      signaledAt: nowISO()
+    };
+    const body = new URLSearchParams();
+    body.set("payload", JSON.stringify(payload));
+    const blob = new Blob([body.toString()], { type: "application/x-www-form-urlencoded;charset=UTF-8" });
+
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(GAS_URL, blob);
+    } else {
+      fetch(GAS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: body.toString(),
+        keepalive: true
+      }).catch(()=>{});
+    }
+  }catch(_){}
+}
+
 function hardReset_(){
   runtime.sid = newSessionId();
   runtime.gender = "";
@@ -1252,7 +1350,7 @@ function renderMbti(){
   };
 
   document.getElementById("btnNext").onclick = async () => {
-    await saveMbtiAndHandoff();
+    await saveMbtiAndGoHandoff();
   };
 
   (async () => {
@@ -1290,11 +1388,14 @@ function renderMbti(){
   touchActivity_();
 }
 
-async function saveMbtiAndHandoff(){
+/* =========================
+   ★変更：MBTI完了後は「完了画面でステイ」→未送信再送→集計シグナル→nameへ
+========================= */
+async function saveMbtiAndGoHandoff(){
   const msg = document.getElementById("msg");
   msg.innerHTML = `<div class="tiny">送信準備中…</div>`;
 
-  // 念のため「今ページ未送信」を送る
+  // 念のため「今ページ未送信」を送る（※runtime.idxは最後のページのままなので41〜50が拾える）
   await sendCurrentPageBatch_({ force:true, statusElId:"msg" });
 
   const sel = document.getElementById("mbtiSelect");
@@ -1331,55 +1432,79 @@ async function saveMbtiAndHandoff(){
       });
 
       msg.innerHTML = r?.ok
-        ? `<div class="ok">MBTIも送信しました。次ページへ移動します。</div>`
-        : `<div class="tiny">（MBTIの送信はローカル保存のみで継続）次ページへ移動します。</div>`;
+        ? `<div class="ok">MBTIも送信しました。</div>`
+        : `<div class="tiny">（MBTIの送信はローカル保存のみで継続）</div>`;
     }catch(_){
-      msg.innerHTML = `<div class="tiny">（通信が不安定なのでMBTIはローカル保存のみ）次ページへ移動します。</div>`;
+      msg.innerHTML = `<div class="tiny">（通信が不安定なのでMBTIはローカル保存のみ）</div>`;
     }
   }else{
-    msg.innerHTML = `<div class="tiny">MBTIは未選択のまま次へ進みます。</div>`;
+    msg.innerHTML = `<div class="tiny">MBTIは未選択のまま進みます。</div>`;
   }
 
-  // ★追加：name.htmlへ遷移する際に、GASへ「集計開始シグナル」を送る（UI停止なし）
-  try{
-    const payload = {
-      action: ACTIONS.START_AGG,
-      sessionId: runtime.sid,
-      gender: runtime.gender,
-      signaledAt: nowISO()
-    };
-    const body = new URLSearchParams();
-    body.set("payload", JSON.stringify(payload));
-    const blob = new Blob([body.toString()], { type: "application/x-www-form-urlencoded;charset=UTF-8" });
-
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(GAS_URL, blob);
-    } else {
-      fetch(GAS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-        body: body.toString(),
-        keepalive: true
-      }).catch(()=>{});
-    }
-  }catch(_){}
-
-  setTimeout(() => setStep("handoff"), 350);
+  // ★ここで「完了画面」へ
+  setStep("handoff");
   touchActivity_();
+  setTimeout(scrollToPageTop_, 0);
 }
 
+/* =========================
+   Handoff (thank you + resend + signal + redirect)
+========================= */
 function renderHandoff(){
+  // 多重遷移を防ぐ
+  if (runtime.handoffTimer) clearTimeout(runtime.handoffTimer);
+  runtime.handoffTimer = null;
+
   $app.innerHTML = `
-    <div class="label">送信完了</div>
-    <p class="qtitle">次のページへ移動します。</p>
+    <div class="label">完了</div>
+    <p class="qtitle">おつかれさまでした！ご回答ありがとうございました！</p>
+
     <div class="mutedBox tiny">
-      sessionId を引き継いでいます：<span class="mono">${escapeHTML(runtime.sid)}</span>
+      いま結果の準備をしています。少しだけお待ちください。<br/>
+      sessionId：<span class="mono">${escapeHTML(runtime.sid)}</span>
     </div>
+
     <div class="hr"></div>
+
+    <div id="handoffMsg" class="tiny">送信状況を確認中…</div>
+
+    <div class="hr"></div>
+
     <button class="btn primary" id="go">次へ</button>
   `;
-  document.getElementById("go").onclick = () => handoffToNextPage();
-  setTimeout(() => handoffToNextPage(), 500);
+
+  document.getElementById("go").onclick = () => {
+    // 手動でも次へ行けるが、未送信再送・シグナル送信は裏で続く
+    handoffToNextPage();
+  };
+
+  // ★一度だけ裏処理を走らせる
+  if (!runtime.handoffBusy){
+    runtime.handoffBusy = true;
+
+    (async () => {
+      const statusEl = document.getElementById("handoffMsg");
+
+      try{
+        // ① 未送信があれば再送（最大50件）
+        await resendAllUnsentAfterMbti_({ statusElId: "handoffMsg" });
+
+        // ② 集計開始シグナル
+        signalStartAggregate_();
+
+        // ③ 少しステイしてから遷移（UX）
+        runtime.handoffTimer = setTimeout(() => {
+          handoffToNextPage();
+        }, 1200);
+      }catch(_){
+        // 失敗しても遷移はする
+        if (statusEl) statusEl.innerHTML = `<div class="tiny">（通信が不安定ですが次へ進みます）</div>`;
+        runtime.handoffTimer = setTimeout(() => {
+          handoffToNextPage();
+        }, 1200);
+      }
+    })();
+  }
 }
 </script>
 </body>

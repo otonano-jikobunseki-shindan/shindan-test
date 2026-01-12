@@ -306,6 +306,8 @@ const NEXT_PAGE_URL = "name.html";
 const ACTIONS = {
   LOG: "logAnswer",
   BATCH: "logAnswersBatch",
+  // ★追加（集計開始シグナル）
+  START_AGG: "startAggregate",
 };
 
 const TSV_PATH = {
@@ -844,11 +846,24 @@ function renderQuiz10(){
     return;
   }
 
-  // ★変更：完了ビューは挟まず、そのままMBTIへ
   if (start >= qTotal){
-    setStep("mbti");
+    $app.innerHTML = `
+      <div class="label">回答完了（Q1〜Q${qTotal}）</div>
+      <p class="qtitle">おつかれ！最後にMBTI（任意）を聞いて、次へ進みます。</p>
+      <div class="mutedBox tiny" style="margin:10px 0;">
+        ※未送信が残っている場合は「未送信を送る」で送れます。
+      </div>
+      <div class="row">
+        <button class="btn good" id="btnToMbti">MBTI入力へ進む</button>
+        <button class="btn primary" id="btnSendAll">未送信を送る</button>
+      </div>
+      <div id="msg"></div>
+    `;
+    document.getElementById("btnToMbti").onclick = () => setStep("mbti");
+    document.getElementById("btnSendAll").onclick = async () => {
+      await sendAllUnsentUpTo10_({ statusElId: "msg" });
+    };
     touchActivity_();
-    setTimeout(scrollToPageTop_, 0);
     return;
   }
 
@@ -862,8 +877,6 @@ function renderQuiz10(){
     const qid = getQid_(q, start + i);
     return !!runtime.answers[qid];
   }).length;
-
-  const isLastPage = (end >= qTotal);
 
   $app.innerHTML = `
     <div class="row" style="justify-content:space-between;align-items:center;">
@@ -880,7 +893,7 @@ function renderQuiz10(){
 
     <div class="mutedBox tiny">
       このページは10問まとめて回答できます。<br/>
-      送信は「次へ」もしくは「10秒停止」で途中送信が走ります。<br/>
+      送信は「次へ」または「今すぐ送信」、もしくは「10秒停止」で途中送信が走ります。<br/>
       ブラウザを閉じる場合も、未送信があれば自動送信（sendBeacon）します。
     </div>
 
@@ -893,16 +906,17 @@ function renderQuiz10(){
     <div class="row">
       <button class="btn ghost" id="btnPrevPage" ${start===0?'disabled':''}>前の10問</button>
       <button class="btn primary" id="btnNextPage" ${pageAnswered < slice.length ? 'disabled' : ''}>
-        ${isLastPage ? "回答完了！" : "次の10問へ"}
+        次の10問へ
       </button>
     </div>
 
     <div class="row" style="margin-top:10px;">
+      <button class="btn good" id="btnSendNow">今すぐ送信する</button>
       <button class="btn danger" id="btnRestart">最初からやり直す</button>
     </div>
 
     <p class="tiny" style="margin-top:10px;">
-      ※「次へ」は、このページの全問が回答済みで押せます。<br/>
+      ※「次の10問へ」は、このページの全問が回答済みで押せます。<br/>
       ※通信が不安定でもローカル保存は残ります。
     </p>
 
@@ -930,17 +944,9 @@ function renderQuiz10(){
   document.getElementById("btnNextPage").onclick = async () => {
     if (!isPageComplete_(slice, start)) return;
 
-    // ★変更：送信を「待たずに」先に遷移（裏送信）
+    // ★変更：送信を「待たずに」先に次ページ表示（裏送信）
     const targets = currentPageTargets_(); // この瞬間の対象を確定
     sendTargetsInBackground_(targets);
-
-    // ★変更：最後のページはMBTIへ直行（中間なし）
-    if (isLastPage){
-      setStep("mbti");
-      touchActivity_();
-      setTimeout(scrollToPageTop_, 0);
-      return;
-    }
 
     runtime.idx = clamp(runtime.idx + PAGE_SIZE, 0, qTotal);
     saveLS();
@@ -948,6 +954,11 @@ function renderQuiz10(){
     touchActivity_();
     // ★変更：ページトップへ
     setTimeout(scrollToPageTop_, 0);
+  };
+
+  document.getElementById("btnSendNow").onclick = async () => {
+    await sendCurrentPageBatch_({ force:true, statusElId: "msg" });
+    touchActivity_();
   };
 
   document.getElementById("btnRestart").onclick = async () => {
@@ -1329,8 +1340,31 @@ async function saveMbtiAndHandoff(){
     msg.innerHTML = `<div class="tiny">MBTIは未選択のまま次へ進みます。</div>`;
   }
 
-  // ★変更：handoffを挟まず、即 name.html へ
-  setTimeout(() => handoffToNextPage(), 350);
+  // ★追加：name.htmlへ遷移する際に、GASへ「集計開始シグナル」を送る（UI停止なし）
+  try{
+    const payload = {
+      action: ACTIONS.START_AGG,
+      sessionId: runtime.sid,
+      gender: runtime.gender,
+      signaledAt: nowISO()
+    };
+    const body = new URLSearchParams();
+    body.set("payload", JSON.stringify(payload));
+    const blob = new Blob([body.toString()], { type: "application/x-www-form-urlencoded;charset=UTF-8" });
+
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(GAS_URL, blob);
+    } else {
+      fetch(GAS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: body.toString(),
+        keepalive: true
+      }).catch(()=>{});
+    }
+  }catch(_){}
+
+  setTimeout(() => setStep("handoff"), 350);
   touchActivity_();
 }
 

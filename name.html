@@ -1,1 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>お名前を教えてください</title>
+
+  <style>
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Segoe UI","Noto Sans JP","Yu Gothic",sans-serif;
+      background:linear-gradient(180deg,#fff7fb,#f3fbff);
+      color:#2b2b2b;
+    }
+    .wrap{max-width:680px;margin:0 auto;padding:24px;}
+    .card{
+      background:#ffffffcc;
+      border-radius:20px;
+      padding:24px;
+      box-shadow:0 10px 30px rgba(0,0,0,.06);
+    }
+    h1{font-size:22px;margin:0 0 12px;}
+    p{line-height:1.8;margin:0 0 20px;}
+    input{
+      width:100%;
+      padding:14px 16px;
+      font-size:16px;
+      border-radius:14px;
+      border:1px solid #ddd;
+    }
+    button{
+      margin-top:20px;
+      width:100%;
+      padding:14px;
+      font-size:16px;
+      font-weight:700;
+      border-radius:14px;
+      border:none;
+      background:linear-gradient(90deg,#a7f3d0,#93c5fd);
+      cursor:pointer;
+    }
+    .note{
+      margin-top:12px;
+      font-size:13px;
+      color:#666;
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>あと少しです！</h1>
+    <p>
+      次のページで、診断の結果を表示します。<br>
+      診断結果の文章に入れて提供するので、<br>
+      <strong>あなたのお名前（普段呼ばれているお名前で大丈夫です！）</strong>を教えてください。
+    </p>
+
+    <input id="nameInput" placeholder="（空欄でも大丈夫です）">
+
+    <button onclick="submitName()">結果を見る</button>
+
+    <div class="note">
+      ※ 未入力の場合、結果文中では「あなた」と表示されます。
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
+
+const params = new URLSearchParams(location.search);
+const sessionId = params.get("sid");   // quiz.html から引き継がれる
+const gender = params.get("gender") || "other"; // 今回は送らないが、必要なら使える
+
+async function submitName(){
+  if (!sessionId){
+    // sid が無いと「どの行に書くか」が決められないので、結果ページへも行かず戻す
+    alert("セッション情報が見つかりませんでした。最初からやり直してください。");
+    location.href = "quiz.html";
+    return;
+  }
+
+  const name = document.getElementById("nameInput").value.trim();
+
+  // 空欄でも送信OK（GAS側は空欄のまま保存）
+  try{
+    await fetch(GAS_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+      body:new URLSearchParams({
+        payload: JSON.stringify({
+          action:"saveName",
+          sessionId,
+          name,
+          answeredAt:new Date().toISOString()
+        })
+      })
+    });
+  }catch(e){
+    // 失敗してもUXは止めない
+    console.warn("name save failed", e);
+  }
+
+  // 次へ（空欄でも進む）
+  location.href = `result.html?sid=${encodeURIComponent(sessionId)}`;
+}
+</script>
+</body>
+</html>
 

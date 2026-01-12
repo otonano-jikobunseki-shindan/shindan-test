@@ -79,8 +79,11 @@
 const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
 const NEXT_PAGE_URL = "result.html";
 
-// ★まとめ送信は logAnswersBatch を使う（GAS側も対応済み）
-const ACTIONS = { LOG: "logAnswer", BATCH: "logAnswersBatch" };
+// GAS actions
+const ACTIONS = {
+  LOG: "logAnswer",
+  BATCH: "logAnswersBatch",
+};
 
 const TSV_PATH = {
   male: "data/male_questions.tsv",
@@ -88,16 +91,18 @@ const TSV_PATH = {
   mbti: "data/mbti_options.tsv"
 };
 
-// ★10問ずつ
+// 10問ずつ
 const PAGE_SIZE = 10;
+
+// 10秒停止で途中送信
+const IDLE_SEND_MS = 10_000;
 
 const LS = {
   gender: "diag_gender",
   sid: "diag_sid",
   answers: "diag_answers",
   progress: "diag_progress",
-  sent: "diag_sent",          // 送信済みqid一覧（Q1..Qn）
-  inflight: "diag_inflight"   // 送信中ロック（復元用）
+  sent: "diag_sent",          // 送信済みqid一覧
 };
 
 let runtime = {
@@ -105,13 +110,20 @@ let runtime = {
   sid: "",
   gender: "",
   questions: [],
-  idx: 0,           // 次に表示する開始index（0,10,20...）
+  // idx: 0,10,20...
+  idx: 0,
   answers: {},
   mbtiOptions: null,
 
-  // 送信管理
-  sentMap: {},      // {Q1:true, ...}
+  // 送信済み判定（qid -> true）
+  sentMap: {},
+
+  // 送信中ロック
   inflight: false,
+
+  // アイドルタイマー
+  idleTimer: null,
+  lastActivityAt: 0,
 };
 
 const $app = document.getElementById("app");
@@ -144,7 +156,6 @@ function loadLS(){
   const answersRaw = localStorage.getItem(LS.answers);
   const progressRaw = localStorage.getItem(LS.progress);
   const sentRaw = localStorage.getItem(LS.sent);
-  const inflightRaw = localStorage.getItem(LS.inflight);
 
   if (sid) runtime.sid = sid;
   if (gender) runtime.gender = gender;
@@ -158,12 +169,8 @@ function loadLS(){
       runtime.idx = Number(p.idx || 0);
     }catch(_){}
   }
-
   if (sentRaw){
     try{ runtime.sentMap = JSON.parse(sentRaw) || {}; }catch(_){}
-  }
-  if (inflightRaw){
-    runtime.inflight = (inflightRaw === "1");
   }
 }
 
@@ -173,7 +180,6 @@ function saveLS(){
   localStorage.setItem(LS.answers, JSON.stringify(runtime.answers || {}));
   localStorage.setItem(LS.progress, JSON.stringify({ idx: runtime.idx, savedAt: nowISO() }));
   localStorage.setItem(LS.sent, JSON.stringify(runtime.sentMap || {}));
-  localStorage.setItem(LS.inflight, runtime.inflight ? "1" : "0");
 }
 
 function clearLSForRestart(){
@@ -182,7 +188,6 @@ function clearLSForRestart(){
   localStorage.removeItem(LS.answers);
   localStorage.removeItem(LS.progress);
   localStorage.removeItem(LS.sent);
-  localStorage.removeItem(LS.inflight);
 }
 
 /* =========================
@@ -215,7 +220,6 @@ function parseTSV(tsv){
 
 /* =========================
    GAS POST
-   - payload=JSON 形式（今のGASの parseJsonBody_ と互換）
 ========================= */
 async function postGAS(payload){
   const body = new URLSearchParams();
@@ -297,11 +301,76 @@ async function loadMbtiOptions(){
 }
 
 /* =========================
+   Auto send (idle + unload)
+========================= */
+function touchActivity_(){
+  runtime.lastActivityAt = Date.now();
+  if (runtime.idleTimer) clearTimeout(runtime.idleTimer);
+
+  runtime.idleTimer = setTimeout(async () => {
+    try{
+      // 条件：前ページが送信済み（=前の10問が全部sentMap=true）
+      if (!prevPageFullySent_()) return;
+
+      // 今ページに未送信があれば、途中送信（force=true）
+      const targets = currentPageTargets_();
+      if (targets.length === 0) return;
+
+      await sendCurrentPageBatch_({ force:true });
+    }catch(_){}
+  }, IDLE_SEND_MS);
+}
+
+function setupAutoSendOnUnload_(){
+  const handler = () => {
+    try{
+      const targets = currentPageTargets_(); // 回答済＆未送信のみ
+      if (targets.length === 0) return;
+
+      const payload = {
+        action: ACTIONS.BATCH,
+        sessionId: runtime.sid,
+        gender: runtime.gender,
+        answeredAt: nowISO(),
+        answers: targets
+      };
+
+      // GAS互換：payload=JSON を x-www-form-urlencoded で送る
+      const body = new URLSearchParams();
+      body.set("payload", JSON.stringify(payload));
+
+      const blob = new Blob([body.toString()], {
+        type: "application/x-www-form-urlencoded;charset=UTF-8"
+      });
+
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(GAS_URL, blob);
+        return;
+      }
+
+      // fallback
+      fetch(GAS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: body.toString(),
+        keepalive: true
+      }).catch(()=>{});
+    }catch(_){}
+  };
+
+  window.addEventListener("beforeunload", handler);
+  window.addEventListener("pagehide", handler); // iOS対策で一応
+}
+
+/* =========================
    Init
 ========================= */
 async function init(){
   loadLS();
   if (!runtime.sid) runtime.sid = newSessionId();
+
+  setupAutoSendOnUnload_();
+
   runtime.step = "landing";
   render();
 }
@@ -345,7 +414,8 @@ function renderLanding(){
     `}
 
     <p class="tiny" style="margin-top:10px;">
-      ※このページ（quiz.html）は「回答送信→次ページへ引き継ぎ」まで担当します。
+      ※このページ（quiz.html）は「回答送信→次ページへ引き継ぎ」まで担当します。<br/>
+      ※結果の表示は次のページで行ってください。
     </p>
   `;
 
@@ -360,8 +430,7 @@ function renderLanding(){
       runtime.idx = Math.floor((runtime.idx || 0) / PAGE_SIZE) * PAGE_SIZE;
       saveLS();
       setStep("quiz");
-      // 再開時、前ページが未送信なら送れる（ただし10問単位）
-      autoSendIfPageComplete_().catch(()=>{});
+      touchActivity_();
     }catch(err){
       $app.innerHTML = `<div class="err">TSV読込エラー: ${escapeHTML(err.message)}</div>
         <div class="hr"></div>
@@ -386,7 +455,8 @@ function renderGender(){
       <button class="btn" id="gOther">その他</button>
     </div>
     <p class="tiny" style="margin-top:10px;">
-      ※「その他」は女性と同じ質問に進みます。
+      ※「その他」は女性と同じ質問に進みます。<br/>
+      ※それ以外の目的で性別を使用しません。
     </p>
     <div class="hr"></div>
     <button class="btn ghost" id="back">戻る</button>
@@ -404,11 +474,10 @@ async function startQuizWithGender(gender){
   runtime.answers = {};
   runtime.questions = [];
   runtime.mbtiOptions = null;
-
-  runtime.sid = newSessionId();
   runtime.sentMap = {};
   runtime.inflight = false;
 
+  runtime.sid = newSessionId();
   saveLS();
 
   try{
@@ -422,6 +491,7 @@ async function startQuizWithGender(gender){
   }
 
   setStep("quiz");
+  touchActivity_();
 }
 
 /* =========================
@@ -446,18 +516,19 @@ function renderQuiz10(){
       <div class="label">回答完了（Q1〜Q${qTotal}）</div>
       <p class="qtitle">おつかれ！最後にMBTI（任意）を聞いて、次へ進みます。</p>
       <div class="mutedBox tiny" style="margin:10px 0;">
-        ※未送信が残っている場合は「今すぐ送信」を押してください（この設計では10問単位で送ります）。
+        ※未送信が残っている場合は「今すぐ送信」でまとめて送れます。
       </div>
       <div class="row">
         <button class="btn good" id="btnToMbti">MBTI入力へ進む</button>
-        <button class="btn primary" id="btnSendNow">今すぐ送信</button>
+        <button class="btn primary" id="btnSendAll">未送信を送る</button>
       </div>
       <div id="msg"></div>
     `;
     document.getElementById("btnToMbti").onclick = () => setStep("mbti");
-    document.getElementById("btnSendNow").onclick = async () => {
-      await sendCurrentPageBatch_({ force: true, statusElId: "msg" });
+    document.getElementById("btnSendAll").onclick = async () => {
+      await sendAllUnsentUpTo10_({ statusElId: "msg" });
     };
+    touchActivity_();
     return;
   }
 
@@ -471,8 +542,6 @@ function renderQuiz10(){
     const qid = getQid_(q, start + i);
     return !!runtime.answers[qid];
   }).length;
-
-  const pageAllDone = (pageAnswered === slice.length);
 
   $app.innerHTML = `
     <div class="row" style="justify-content:space-between;align-items:center;">
@@ -488,8 +557,9 @@ function renderQuiz10(){
     <div class="hr"></div>
 
     <div class="mutedBox tiny">
-      このページは ${PAGE_SIZE}問まとめて回答できます。<br/>
-      ローカル保存は即時。送信は「この10問が全部埋まったら」まとめて1回POST（logAnswersBatch）します。
+      このページは10問まとめて回答できます。<br/>
+      送信は「次へ」または「今すぐ送信」、もしくは「10秒停止」で途中送信が走ります。<br/>
+      ブラウザを閉じる場合も、未送信があれば自動送信（sendBeacon）します。
     </div>
 
     <div id="qList">
@@ -500,19 +570,19 @@ function renderQuiz10(){
 
     <div class="row">
       <button class="btn ghost" id="btnPrevPage" ${start===0?'disabled':''}>前の10問</button>
-      <button class="btn primary" id="btnNextPage" ${pageAllDone ? '' : 'disabled'}>
+      <button class="btn primary" id="btnNextPage" ${pageAnswered < slice.length ? 'disabled' : ''}>
         次の10問へ
       </button>
     </div>
 
     <div class="row" style="margin-top:10px;">
-      <button class="btn good" id="btnSendNow">今すぐ送信</button>
+      <button class="btn good" id="btnSendNow">今すぐ送信する</button>
       <button class="btn danger" id="btnRestart">最初からやり直す</button>
     </div>
 
     <p class="tiny" style="margin-top:10px;">
       ※「次の10問へ」は、このページの全問が回答済みで押せます。<br/>
-      ※自動送信は「このページが全部埋まった瞬間」に1回だけ走ります。
+      ※通信が不安定でもローカル保存は残ります。
     </p>
 
     <div id="msg"></div>
@@ -531,21 +601,24 @@ function renderQuiz10(){
     runtime.idx = clamp(runtime.idx - PAGE_SIZE, 0, qTotal);
     saveLS();
     render();
+    touchActivity_();
   };
 
   document.getElementById("btnNextPage").onclick = async () => {
     if (!isPageComplete_(slice, start)) return;
 
-    // ★ページが埋まってるなら、ここで送信（未送信が残っている場合）
-    await sendCurrentPageBatch_({ statusElId: "msg" });
+    // ページ移動前に「このページの未送信を最大10件」送る（強制）
+    await sendCurrentPageBatch_({ force:true, statusElId:"msg" });
 
     runtime.idx = clamp(runtime.idx + PAGE_SIZE, 0, qTotal);
     saveLS();
     render();
+    touchActivity_();
   };
 
   document.getElementById("btnSendNow").onclick = async () => {
-    await sendCurrentPageBatch_({ force: true, statusElId: "msg" });
+    await sendCurrentPageBatch_({ force:true, statusElId: "msg" });
+    touchActivity_();
   };
 
   document.getElementById("btnRestart").onclick = () => {
@@ -553,8 +626,8 @@ function renderQuiz10(){
     hardReset_();
   };
 
-  // 再描画した時に「ページがすでに埋まってる」なら自動送信を試す
-  autoSendIfPageComplete_({ statusElId:"msg" }).catch(()=>{});
+  // ページ表示時：アイドルタイマー稼働
+  touchActivity_();
 }
 
 function renderQBlock_(q, pageStart, i){
@@ -615,7 +688,7 @@ function getQid_(q, absoluteIdx){
 }
 
 function countAnswered_(){
-  return Object.keys(runtime.answers || {}).filter(k => /^Q\d+$/.test(k)).length;
+  return Object.keys(runtime.answers || {}).filter(k => /^Q\d+$/.test(k) && !!runtime.answers[k]).length;
 }
 
 function isPageComplete_(slice, pageStart){
@@ -626,22 +699,6 @@ function isPageComplete_(slice, pageStart){
   return true;
 }
 
-/* =========================
-   Answer handling
-========================= */
-function onAnswer_(qid, opt){
-  runtime.answers[qid] = opt;
-  saveLS();
-
-  // 10問ページなので素直に描画し直す（軽い）
-  render();
-}
-
-/* =========================
-   Batch send (logAnswersBatch)
-   - 今見えてる10問（ページ分）だけをまとめて送る
-   - 未送信だけ抽出
-========================= */
 function currentPageQids_(){
   const qTotal = runtime.questions.length || 0;
   const start = runtime.idx;
@@ -650,19 +707,44 @@ function currentPageQids_(){
   return slice.map((q, i) => getQid_(q, start + i));
 }
 
-async function autoSendIfPageComplete_(opts={}){
-  const qTotal = runtime.questions.length || 0;
-  if (!qTotal) return;
-
-  const start = runtime.idx;
-  const end = Math.min(start + PAGE_SIZE, qTotal);
-  const slice = runtime.questions.slice(start, end);
-  if (!isPageComplete_(slice, start)) return;
-
-  // force=falseでも、このページは埋まってるなら送ってOK
-  await sendCurrentPageBatch_({ force:false, statusElId: opts.statusElId || null });
+function currentPageTargets_(){
+  const qids = currentPageQids_();
+  return qids
+    .filter(qid => !!runtime.answers[qid] && !runtime.sentMap[qid])
+    .map(qid => ({ qid, opt: runtime.answers[qid] }));
 }
 
+// 「前ページ（10問）が全部送信済みか？」
+function prevPageFullySent_(){
+  const qTotal = runtime.questions.length || 0;
+  if (!qTotal) return false;
+
+  const prevStart = runtime.idx - PAGE_SIZE;
+  if (prevStart < 0) return false;
+
+  const prevEnd = Math.min(prevStart + PAGE_SIZE, qTotal);
+  const prevSlice = runtime.questions.slice(prevStart, prevEnd);
+  const prevQids = prevSlice.map((q, i) => getQid_(q, prevStart + i));
+
+  // 前ページが空ならfalse
+  if (prevQids.length === 0) return false;
+
+  return prevQids.every(qid => !!runtime.sentMap[qid]);
+}
+
+/* =========================
+   Answer handling
+========================= */
+function onAnswer_(qid, opt){
+  runtime.answers[qid] = opt;
+  saveLS();
+  render();
+  touchActivity_();
+}
+
+/* =========================
+   Send batch (current page)
+========================= */
 async function sendCurrentPageBatch_(opts={}){
   const force = !!opts.force;
   const statusElId = opts.statusElId || null;
@@ -673,68 +755,111 @@ async function sendCurrentPageBatch_(opts={}){
     return;
   }
 
-  const qids = currentPageQids_();
+  const qTotal = runtime.questions.length || 0;
+  if (!qTotal) return;
 
-  // 未回答があるなら、forceでも送れない（空が混ざると嫌なので）
-  for (const qid of qids){
-    if (!runtime.answers[qid]) {
-      if (statusEl) statusEl.innerHTML = `<div class="tiny">（未回答があるので送信できません）</div>`;
-      return;
+  // force=false のときは「このページが全部回答済み」じゃないと送らない
+  if (!force){
+    const qids = currentPageQids_();
+    for (const qid of qids){
+      if (!runtime.answers[qid]){
+        if (statusEl) statusEl.innerHTML = `<div class="tiny">（未回答があるので送信できません）</div>`;
+        return;
+      }
     }
   }
 
-  // 未送信だけ抽出
-  const targets = qids.filter(qid => !runtime.sentMap[qid]);
-
+  const targets = currentPageTargets_(); // 回答済&未送信だけ
   if (targets.length === 0){
-    if (statusEl) statusEl.innerHTML = `<div class="tiny">（この10問はすでに送信済み）</div>`;
+    if (statusEl) statusEl.innerHTML = `<div class="tiny">（送信対象がありません）</div>`;
     return;
   }
 
-  // force=false でも「ページが埋まってるなら送る」方針なので、ここでは送ってOK
   runtime.inflight = true;
   saveLS();
 
-  if (statusEl) statusEl.innerHTML = `<div class="tiny">送信中…（${targets.length}件を1回で送信）</div>`;
+  if (statusEl) statusEl.innerHTML = `<div class="tiny">送信中…（${targets.length}件）</div>`;
 
   try{
-    const answers = targets.map(qid => ({ qid, opt: runtime.answers[qid] }));
-
     const payload = {
       action: ACTIONS.BATCH,
       sessionId: runtime.sid,
       gender: runtime.gender,
       answeredAt: nowISO(),
-      answers
+      answers: targets, // 1〜10件OK（GAS側も対応）
     };
 
     const r = await postGAS(payload);
 
     if (r && r.ok){
-      // 成功したものだけ sentMap に反映（GAS側の wrote[] を信用）
       const wrote = Array.isArray(r.wrote) ? r.wrote : [];
-      for (const w of wrote){
-        if (w && w.ok && w.qid) runtime.sentMap[w.qid] = true;
+      // wrote が返らなくても、上書き安全なので「targetsを送信済み扱い」にしてOK
+      if (wrote.length > 0){
+        wrote.forEach(x => { if (x && x.qid) runtime.sentMap[x.qid] = true; });
+      } else {
+        targets.forEach(x => runtime.sentMap[x.qid] = true);
       }
-      saveLS();
 
-      if (statusEl){
-        statusEl.innerHTML = `<div class="ok tiny">送信OK：${r.wroteCount || wrote.filter(x=>x.ok).length}件</div>`;
-      }
+      saveLS();
+      if (statusEl) statusEl.innerHTML = `<div class="ok tiny">送信OK：${targets.length}件</div>`;
     } else {
-      if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信に失敗しました（GAS応答がokではありません）</div>`;
+      if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信失敗（通信が落ち着いたら再度「今すぐ送信」してください）</div>`;
     }
-  }catch(err){
-    if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信エラー：${escapeHTML(err.message)}</div>`;
+  }catch(_){
+    if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信失敗（通信が不安定です。時間をおいて再送してください）</div>`;
   }finally{
     runtime.inflight = false;
     saveLS();
   }
 }
 
-/* =========================
-   Reset
-========================= */
+// 完了画面用：未送信を最大10件だけ送る（雑にOK）
+async function sendAllUnsentUpTo10_(opts={}){
+  const statusElId = opts.statusElId || null;
+  const statusEl = statusElId ? document.getElementById(statusElId) : null;
+
+  if (runtime.inflight){
+    if (statusEl) statusEl.innerHTML = `<div class="tiny">（送信中…）</div>`;
+    return;
+  }
+
+  // Q1.. を見て未送信だけ抽出
+  const qids = Object.keys(runtime.answers || {}).filter(k => /^Q\d+$/.test(k) && !!runtime.answers[k]);
+  const targets = qids.filter(qid => !runtime.sentMap[qid]).slice(0, PAGE_SIZE).map(qid => ({ qid, opt: runtime.answers[qid] }));
+
+  if (targets.length === 0){
+    if (statusEl) statusEl.innerHTML = `<div class="tiny">（未送信はありません）</div>`;
+    return;
+  }
+
+  runtime.inflight = true;
+  saveLS();
+  if (statusEl) statusEl.innerHTML = `<div class="tiny">送信中…（${targets.length}件）</div>`;
+
+  try{
+    const r = await postGAS({
+      action: ACTIONS.BATCH,
+      sessionId: runtime.sid,
+      gender: runtime.gender,
+      answeredAt: nowISO(),
+      answers: targets
+    });
+
+    if (r?.ok){
+      targets.forEach(x => runtime.sentMap[x.qid] = true);
+      saveLS();
+      if (statusEl) statusEl.innerHTML = `<div class="ok tiny">送信OK：${targets.length}件</div>`;
+    } else {
+      if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信失敗</div>`;
+    }
+  }catch(_){
+    if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信失敗</div>`;
+  }finally{
+    runtime.inflight = false;
+    saveLS();
+  }
+}
+
 function hardReset_(){
   runtime.sid = newSessionId();
   runtime.gender = "";
@@ -744,13 +869,14 @@ function hardReset_(){
   runtime.mbtiOptions = null;
   runtime.sentMap = {};
   runtime.inflight = false;
+  if (runtime.idleTimer) clearTimeout(runtime.idleTimer);
+  runtime.idleTimer = null;
   clearLSForRestart();
   render();
 }
 
 /* =========================
-   MBTI view
-   - MBTIは従来通り logAnswer（単発送信）にしておく（分かりやすさ優先）
+   MBTI view (send via logAnswer)
 ========================= */
 function renderMbti(){
   $app.innerHTML = `
@@ -769,6 +895,11 @@ function renderMbti(){
     </div>
 
     <div id="msg"></div>
+
+    <p class="tiny" style="margin-top:10px;">
+      ※プルダウン表示は「ENFP（運動家）」形式です。<br/>
+      ※選択すると MBTI1〜4（E/I, S/N, T/F, J/P）も一緒に保存・送信します。
+    </p>
   `;
 
   document.getElementById("btnBackToQuiz").onclick = () => {
@@ -776,6 +907,7 @@ function renderMbti(){
     runtime.idx = Math.floor((Math.max(0, qTotal-1)) / PAGE_SIZE) * PAGE_SIZE;
     saveLS();
     setStep("quiz");
+    touchActivity_();
   };
 
   document.getElementById("btnNext").onclick = async () => {
@@ -788,7 +920,8 @@ function renderMbti(){
       if (!runtime.mbtiOptions) runtime.mbtiOptions = await loadMbtiOptions();
 
       if (!runtime.mbtiOptions || runtime.mbtiOptions.length === 0){
-        area.innerHTML = `<div class="err">mbti_options.tsv は読めましたが、候補が0件でした。</div>`;
+        area.innerHTML = `<div class="err">mbti_options.tsv は読めましたが、候補が0件でした。</div>
+          <div class="tiny">（TSVの1列目に「ENFP（運動家）」形式が入っているか確認してください）</div>`;
         return;
       }
 
@@ -804,7 +937,7 @@ function renderMbti(){
           `).join("")}
         </select>
         <div class="tiny" style="margin-top:10px;">
-          ※送信は「MBTI=ENFP / MBTI1..4=E N F P」です。
+          ※表示は「ENFP（運動家）」、送信は「MBTI=ENFP / MBTI1..4=E N F P」です。
         </div>
       `;
     }catch(err){
@@ -812,14 +945,16 @@ function renderMbti(){
         <div class="tiny">※一旦スキップして次へ進めます。</div>`;
     }
   })();
+
+  touchActivity_();
 }
 
 async function saveMbtiAndHandoff(){
   const msg = document.getElementById("msg");
   msg.innerHTML = `<div class="tiny">送信準備中…</div>`;
 
-  // 念のため「今いるページ」が未送信なら送れる（ただしページが埋まってることが前提）
-  try { await autoSendIfPageComplete_({ statusElId:"msg" }); } catch(_) {}
+  // 念のため「今ページ未送信」を送る
+  await sendCurrentPageBatch_({ force:true, statusElId:"msg" });
 
   const sel = document.getElementById("mbtiSelect");
   const type = sel ? normalizeMbtiType(sel.value) : "";
@@ -855,16 +990,17 @@ async function saveMbtiAndHandoff(){
       });
 
       msg.innerHTML = r?.ok
-        ? `<div class="ok tiny">MBTIも送信しました。次ページへ移動します。</div>`
-        : `<div class="tiny">（MBTI送信はローカル保存のみ）次ページへ移動します。</div>`;
+        ? `<div class="ok">MBTIも送信しました。次ページへ移動します。</div>`
+        : `<div class="tiny">（MBTIの送信はローカル保存のみで継続）次ページへ移動します。</div>`;
     }catch(_){
-      msg.innerHTML = `<div class="tiny">（通信不安定なのでMBTIはローカル保存のみ）次ページへ移動します。</div>`;
+      msg.innerHTML = `<div class="tiny">（通信が不安定なのでMBTIはローカル保存のみ）次ページへ移動します。</div>`;
     }
   }else{
     msg.innerHTML = `<div class="tiny">MBTIは未選択のまま次へ進みます。</div>`;
   }
 
   setTimeout(() => setStep("handoff"), 350);
+  touchActivity_();
 }
 
 function renderHandoff(){
@@ -872,7 +1008,7 @@ function renderHandoff(){
     <div class="label">送信完了</div>
     <p class="qtitle">次のページへ移動します。</p>
     <div class="mutedBox tiny">
-      sessionId：<span class="mono">${escapeHTML(runtime.sid)}</span>
+      sessionId を引き継いでいます：<span class="mono">${escapeHTML(runtime.sid)}</span>
     </div>
     <div class="hr"></div>
     <button class="btn primary" id="go">次へ</button>

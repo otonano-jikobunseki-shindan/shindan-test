@@ -7,6 +7,9 @@
   <title>お名前を教えてください</title>
 
   <style>
+    /* ★追加：スマホで input が枠からはみ出す対策 */
+    *, *::before, *::after { box-sizing: border-box; }
+
     body{
       margin:0;
       font-family: system-ui,-apple-system,"Segoe UI","Noto Sans JP","Yu Gothic",sans-serif;
@@ -28,6 +31,7 @@
       font-size:16px;
       border-radius:14px;
       border:1px solid #ddd;
+      /* ※ box-sizing は上の * で効いてるので追加しなくてもOK */
     }
     button{
       margin-top:20px;

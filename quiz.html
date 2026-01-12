@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
   <title>大人の診断テスト</title>
-　<style>
+  <style>
   :root{
     /* 温かい配色（クリーム×ピーチ×ココア） */
     --bg1:#fff7ef;
@@ -371,6 +371,24 @@ function optStr(n){ return "OPT" + String(n); }
 function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
 
 /* =========================
+   ★追加：ページ先頭（次の10問の最初の問題）へスクロール
+   - #qList 内の最初の .qblock にスクロール
+   - ヘッダー被り対策で少しだけ上に戻す
+========================= */
+function scrollToCurrentPageTop_(){
+  // qListがある場合は、その最初の問題ブロックへ
+  const first = document.querySelector("#qList .qblock");
+  if (first){
+    first.scrollIntoView({ behavior:"smooth", block:"start" });
+    // 少しだけ上に戻す（見出しが被る/余白欲しい対策）
+    setTimeout(() => { window.scrollBy(0, -8); }, 120);
+    return;
+  }
+  // ない場合はページトップ
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* =========================
    LocalStorage
 ========================= */
 function loadLS(){
@@ -558,7 +576,6 @@ function setupAutoSendOnUnload_(){
         answers: targets
       };
 
-      // GAS互換：payload=JSON を x-www-form-urlencoded で送る
       const body = new URLSearchParams();
       body.set("payload", JSON.stringify(payload));
 
@@ -571,7 +588,6 @@ function setupAutoSendOnUnload_(){
         return;
       }
 
-      // fallback
       fetch(GAS_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
@@ -582,7 +598,7 @@ function setupAutoSendOnUnload_(){
   };
 
   window.addEventListener("beforeunload", handler);
-  window.addEventListener("pagehide", handler); // iOS対策で一応
+  window.addEventListener("pagehide", handler); // iOS対策
 }
 
 /* =========================
@@ -654,6 +670,8 @@ function renderLanding(){
       saveLS();
       setStep("quiz");
       touchActivity_();
+      // 再開したら問題先頭が見えるように
+      setTimeout(scrollToCurrentPageTop_, 60);
     }catch(err){
       $app.innerHTML = `<div class="err">TSV読込エラー: ${escapeHTML(err.message)}</div>
         <div class="hr"></div>
@@ -715,6 +733,8 @@ async function startQuizWithGender(gender){
 
   setStep("quiz");
   touchActivity_();
+  // 最初の問題へ
+  setTimeout(scrollToCurrentPageTop_, 60);
 }
 
 /* =========================
@@ -739,7 +759,7 @@ function renderQuiz10(){
       <div class="label">回答完了（Q1〜Q${qTotal}）</div>
       <p class="qtitle">おつかれ！最後にMBTI（任意）を聞いて、次へ進みます。</p>
       <div class="mutedBox tiny" style="margin:10px 0;">
-        ※未送信が残っている場合は「今すぐ送信」でまとめて送れます。
+        ※未送信が残っている場合は「未送信を送る」で送れます。
       </div>
       <div class="row">
         <button class="btn good" id="btnToMbti">MBTI入力へ進む</button>
@@ -781,8 +801,8 @@ function renderQuiz10(){
 
     <div class="mutedBox tiny">
       このページは10問まとめて回答できます。<br/>
-      送信は「次へ」または「今すぐ送信」、もしくは「10秒停止」で途中送信が走ります。<br/>
-      ブラウザを閉じる場合も、未送信があれば自動送信（sendBeacon）します。
+      「次の10問へ」でページ先頭の問題まで自動スクロールします。<br/>
+      10秒停止で途中送信、ブラウザを閉じる場合も未送信があれば自動送信します。
     </div>
 
     <div id="qList">
@@ -804,8 +824,7 @@ function renderQuiz10(){
     </div>
 
     <p class="tiny" style="margin-top:10px;">
-      ※「次の10問へ」は、このページの全問が回答済みで押せます。<br/>
-      ※通信が不安定でもローカル保存は残ります。
+      ※「次の10問へ」は、このページの全問が回答済みで押せます。
     </p>
 
     <div id="msg"></div>
@@ -825,18 +844,22 @@ function renderQuiz10(){
     saveLS();
     render();
     touchActivity_();
+    // ★追加：ページ切替後に先頭問題へスクロール
+    setTimeout(scrollToCurrentPageTop_, 60);
   };
 
   document.getElementById("btnNextPage").onclick = async () => {
     if (!isPageComplete_(slice, start)) return;
 
-    // ページ移動前に「このページの未送信を最大10件」送る（強制）
+    // ページ移動前に「このページの未送信」を送る（強制）
     await sendCurrentPageBatch_({ force:true, statusElId:"msg" });
 
     runtime.idx = clamp(runtime.idx + PAGE_SIZE, 0, qTotal);
     saveLS();
     render();
     touchActivity_();
+    // ★追加：ページ切替後に先頭問題へスクロール
+    setTimeout(scrollToCurrentPageTop_, 60);
   };
 
   document.getElementById("btnSendNow").onclick = async () => {
@@ -876,17 +899,11 @@ function renderQBlock_(q, pageStart, i){
     }
   }
 
-  const sent = !!runtime.sentMap[qid];
-  const sentPill = sent ? `<span class="pill">送信済</span>` : `<span class="pill">未送信</span>`;
-
+  // ★変更：右上の「送信済/未送信」「回答済/未回答」表示を完全に削除
   return `
     <div class="qblock" id="block_${escapeHTML(qid)}">
       <div class="qhead">
         <div class="qnum">${escapeHTML(qid)}</div>
-        <div class="row" style="gap:6px;flex:0;">
-          ${sentPill}
-          ${answered ? `<span class="pill">回答済</span>` : `<span class="pill">未回答</span>`}
-        </div>
       </div>
       <div class="qtitle">${escapeHTML(text)}</div>
       <div class="qopt">
@@ -949,9 +966,7 @@ function prevPageFullySent_(){
   const prevSlice = runtime.questions.slice(prevStart, prevEnd);
   const prevQids = prevSlice.map((q, i) => getQid_(q, prevStart + i));
 
-  // 前ページが空ならfalse
   if (prevQids.length === 0) return false;
-
   return prevQids.every(qid => !!runtime.sentMap[qid]);
 }
 
@@ -981,7 +996,6 @@ async function sendCurrentPageBatch_(opts={}){
   const qTotal = runtime.questions.length || 0;
   if (!qTotal) return;
 
-  // force=false のときは「このページが全部回答済み」じゃないと送らない
   if (!force){
     const qids = currentPageQids_();
     for (const qid of qids){
@@ -992,7 +1006,7 @@ async function sendCurrentPageBatch_(opts={}){
     }
   }
 
-  const targets = currentPageTargets_(); // 回答済&未送信だけ
+  const targets = currentPageTargets_();
   if (targets.length === 0){
     if (statusEl) statusEl.innerHTML = `<div class="tiny">（送信対象がありません）</div>`;
     return;
@@ -1009,14 +1023,13 @@ async function sendCurrentPageBatch_(opts={}){
       sessionId: runtime.sid,
       gender: runtime.gender,
       answeredAt: nowISO(),
-      answers: targets, // 1〜10件OK（GAS側も対応）
+      answers: targets,
     };
 
     const r = await postGAS(payload);
 
     if (r && r.ok){
       const wrote = Array.isArray(r.wrote) ? r.wrote : [];
-      // wrote が返らなくても、上書き安全なので「targetsを送信済み扱い」にしてOK
       if (wrote.length > 0){
         wrote.forEach(x => { if (x && x.qid) runtime.sentMap[x.qid] = true; });
       } else {
@@ -1036,7 +1049,7 @@ async function sendCurrentPageBatch_(opts={}){
   }
 }
 
-// 完了画面用：未送信を最大10件だけ送る（雑にOK）
+// 完了画面用：未送信を最大10件だけ送る
 async function sendAllUnsentUpTo10_(opts={}){
   const statusElId = opts.statusElId || null;
   const statusEl = statusElId ? document.getElementById(statusElId) : null;
@@ -1046,9 +1059,11 @@ async function sendAllUnsentUpTo10_(opts={}){
     return;
   }
 
-  // Q1.. を見て未送信だけ抽出
   const qids = Object.keys(runtime.answers || {}).filter(k => /^Q\d+$/.test(k) && !!runtime.answers[k]);
-  const targets = qids.filter(qid => !runtime.sentMap[qid]).slice(0, PAGE_SIZE).map(qid => ({ qid, opt: runtime.answers[qid] }));
+  const targets = qids
+    .filter(qid => !runtime.sentMap[qid])
+    .slice(0, PAGE_SIZE)
+    .map(qid => ({ qid, opt: runtime.answers[qid] }));
 
   if (targets.length === 0){
     if (statusEl) statusEl.innerHTML = `<div class="tiny">（未送信はありません）</div>`;
@@ -1099,7 +1114,7 @@ function hardReset_(){
 }
 
 /* =========================
-   MBTI view (send via logAnswer)
+   MBTI view
 ========================= */
 function renderMbti(){
   $app.innerHTML = `
@@ -1118,11 +1133,6 @@ function renderMbti(){
     </div>
 
     <div id="msg"></div>
-
-    <p class="tiny" style="margin-top:10px;">
-      ※プルダウン表示は「ENFP（運動家）」形式です。<br/>
-      ※選択すると MBTI1〜4（E/I, S/N, T/F, J/P）も一緒に保存・送信します。
-    </p>
   `;
 
   document.getElementById("btnBackToQuiz").onclick = () => {
@@ -1131,6 +1141,7 @@ function renderMbti(){
     saveLS();
     setStep("quiz");
     touchActivity_();
+    setTimeout(scrollToCurrentPageTop_, 60);
   };
 
   document.getElementById("btnNext").onclick = async () => {
@@ -1143,8 +1154,7 @@ function renderMbti(){
       if (!runtime.mbtiOptions) runtime.mbtiOptions = await loadMbtiOptions();
 
       if (!runtime.mbtiOptions || runtime.mbtiOptions.length === 0){
-        area.innerHTML = `<div class="err">mbti_options.tsv は読めましたが、候補が0件でした。</div>
-          <div class="tiny">（TSVの1列目に「ENFP（運動家）」形式が入っているか確認してください）</div>`;
+        area.innerHTML = `<div class="err">mbti_options.tsv は読めましたが、候補が0件でした。</div>`;
         return;
       }
 
@@ -1176,7 +1186,6 @@ async function saveMbtiAndHandoff(){
   const msg = document.getElementById("msg");
   msg.innerHTML = `<div class="tiny">送信準備中…</div>`;
 
-  // 念のため「今ページ未送信」を送る
   await sendCurrentPageBatch_({ force:true, statusElId:"msg" });
 
   const sel = document.getElementById("mbtiSelect");
@@ -1214,7 +1223,7 @@ async function saveMbtiAndHandoff(){
 
       msg.innerHTML = r?.ok
         ? `<div class="ok">MBTIも送信しました。次ページへ移動します。</div>`
-        : `<div class="tiny">（MBTIの送信はローカル保存のみで継続）次ページへ移動します。</div>`;
+        : `<div class="tiny">（MBTIの送信はローカル保存のみ）次ページへ移動します。</div>`;
     }catch(_){
       msg.innerHTML = `<div class="tiny">（通信が不安定なのでMBTIはローカル保存のみ）次ページへ移動します。</div>`;
     }

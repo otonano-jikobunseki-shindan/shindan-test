@@ -1,1 +1,212 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>診断結果</title>
+
+  <style>
+    :root{
+      --bg1:#fff7ef;
+      --bg2:#fff1f6;
+      --card:#ffffffcc;
+      --text:#2b2b2b;
+      --muted:#6b7280;
+      --line:#f1d7c8;
+      --shadow: 0 10px 30px rgba(20,10,5,.08);
+      --shadow2: 0 6px 18px rgba(20,10,5,.06);
+      --radius: 18px;
+      --radius2: 14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto,
+        "Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+      background: radial-gradient(1200px 700px at 20% 10%, var(--bg2), transparent 60%),
+                  radial-gradient(1200px 700px at 80% 0%, #fffbe6, transparent 55%),
+                  linear-gradient(180deg, var(--bg1), #ffffff);
+      color:var(--text);
+    }
+    .wrap{max-width:760px;margin:0 auto;padding:18px 14px 40px;}
+    .hero{
+      padding:18px 16px;border:1px solid var(--line);border-radius:var(--radius);
+      background:rgba(255,255,255,.78);box-shadow: var(--shadow);backdrop-filter: blur(10px);
+    }
+    h1{font-size:22px;margin:0 0 8px;letter-spacing:.2px;}
+    .sub{color:var(--muted);line-height:1.7;margin:0;}
+    .card{
+      margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:var(--radius);
+      background:rgba(255,255,255,.72);box-shadow: var(--shadow2);
+    }
+    .btn{
+      appearance:none;border:1px solid #f3d2c2;background:#fff;color:var(--text);
+      padding:12px 14px;border-radius:var(--radius2);font-weight:900;cursor:pointer;width:100%;
+      box-shadow: 0 4px 12px rgba(20,10,5,.06);
+    }
+    .btn:active{transform: translateY(1px);}
+    .btn.good{
+      background: linear-gradient(90deg, #34d399, #22c55e);
+      border-color: transparent;color:#0b2b1f;
+    }
+    .tiny{font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px;}
+    .err{
+      color:#7f1d1d;background: rgba(239,68,68,.08);
+      border:1px solid rgba(239,68,68,.25);
+      padding:10px;border-radius:var(--radius2);margin-top:10px;line-height:1.7;
+    }
+
+    /* ★ここだけがスクショ対象 */
+    #shareTop{
+      border:1px solid #f3d2c2;
+      border-radius:var(--radius);
+      padding:14px;
+      background: rgba(255,255,255,.86);
+      box-shadow: 0 6px 18px rgba(20,10,5,.05);
+    }
+    .who{
+      font-size:18px;
+      font-weight:1000;
+      margin:0 0 10px;
+      line-height:1.4;
+    }
+    .badgeRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .illus{
+      width:92px;height:92px;border-radius:18px;border:1px dashed #f0c7b1;
+      background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.4));
+      display:flex;align-items:center;justify-content:center;
+      color:#9ca3af;font-weight:900;flex:0 0 auto;
+    }
+    .typeBox{flex:1 1 auto;min-width:200px;}
+    .typeMain{font-size:22px;font-weight:1100;margin:0 0 6px;letter-spacing:.2px;}
+    .typeSub{margin:0;color:var(--muted);line-height:1.6;}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>診断結果</h1>
+      <p class="sub">あなたの結果が出ました。</p>
+    </div>
+
+    <div class="card">
+      <!-- ★「ここだけ」領域 -->
+      <div id="shareTop">
+        <p class="who"><span id="nameSpan">あなた</span>さんは、</p>
+
+        <div class="badgeRow">
+          <div class="illus" id="illusBox">ILLUST</div>
+
+          <div class="typeBox">
+            <p class="typeMain">
+              <span id="prefixSpan">接頭語</span><span id="animalSpan">動物</span>
+              です！
+            </p>
+            <p class="typeSub" id="typeSubLine">（ここは任意。入れないなら空でOK）</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <button class="btn good" onclick="saveShareTopImage()">この部分だけ画像で保存</button>
+        <div class="tiny">※保存されるのは「イラスト＋接頭語＋動物＋です！まで」だけです。</div>
+      </div>
+
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <!-- html2canvas（CDN） -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <script>
+    // ここはあなたのGAS
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
+
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get("sid");
+
+    // 仮：表示（本番はGASから「回答集計」を取って埋める）
+    // name/prefix/animal を置き換えるだけでスクショ部分は完成する
+    document.getElementById("nameSpan").textContent = params.get("name") || "あなた";
+    document.getElementById("prefixSpan").textContent = params.get("prefix") || "やさしい";
+    document.getElementById("animalSpan").textContent = params.get("animal") || "オオカミ";
+    // サブ行は不要なら空にしてOK
+    // document.getElementById("typeSubLine").textContent = "";
+
+    function setMsg(kind, text){
+      const el = document.getElementById("msg");
+      if (!text){ el.innerHTML = ""; return; }
+      el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
+    }
+
+    function escapeHtml(s){
+      return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // ★ここが「そこだけ」スクショ
+    async function saveShareTopImage(){
+      try{
+        if (!sessionId){
+          setMsg("err","セッション情報(sid)が見つかりません。最初からやり直してください。");
+          return;
+        }
+        setMsg("", "");
+
+        const target = document.getElementById("shareTop");
+
+        // 画質UP（端末解像度に合わせて2倍）
+        const scale = Math.min(2, window.devicePixelRatio || 1);
+
+        const canvas = await html2canvas(target, {
+          backgroundColor: null,
+          scale,
+          useCORS: true
+        });
+
+        // 1) 端末へ保存（ダウンロード）
+        const dataUrl = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `result_${sessionId}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        // 2) ついでにGASへ送る（必要ならON）
+        // await sendImageToGAS_(dataUrl, "shareTop");
+
+        setMsg("ok","画像を保存しました。");
+      }catch(e){
+        console.warn(e);
+        setMsg("err","画像の保存に失敗しました。ブラウザを変えると直る場合があります。");
+      }
+    }
+
+    // 任意：GASへ送信（Base64 PNG）
+    async function sendImageToGAS_(dataUrl, kind){
+      const payloadObj = {
+        action: "saveCapture",
+        sessionId,
+        kind,                 // "shareTop" など
+        imageBase64: dataUrl, // data:image/png;base64,...
+        capturedAt: new Date().toISOString()
+      };
+
+      const body = new URLSearchParams();
+      body.set("payload", JSON.stringify(payloadObj));
+
+      // keepaliveは画面遷移でも送り切るため
+      await fetch(GAS_URL, {
+        method: "POST",
+        headers: {"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+        body: body.toString(),
+        keepalive: true
+      });
+    }
+  </script>
+</body>
+</html>
 

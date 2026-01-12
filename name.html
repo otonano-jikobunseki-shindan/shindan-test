@@ -7,8 +7,6 @@
   <title>お名前を教えてください</title>
 
   <style>
-    *{ box-sizing:border-box; }
-
     body{
       margin:0;
       font-family: system-ui,-apple-system,"Segoe UI","Noto Sans JP","Yu Gothic",sans-serif;
@@ -30,7 +28,6 @@
       font-size:16px;
       border-radius:14px;
       border:1px solid #ddd;
-      box-sizing:border-box;
     }
     button{
       margin-top:20px;
@@ -88,29 +85,40 @@ async function submitName(){
 
   const name = document.getElementById("nameInput").value.trim();
 
-  // 空欄でも送信OK（GAS側は空欄のまま保存）
+  // ★変更：先に結果ページへ（UX優先）
+  location.href = `result.html?sid=${encodeURIComponent(sessionId)}`;
+
+  // ★変更：遷移後にバックで送信（UIは止めない）
   try{
-    await fetch(GAS_URL,{
-      method:"POST",
-      headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-      body:new URLSearchParams({
-        payload: JSON.stringify({
-          action:"saveName",
-          sessionId,
-          name,
-          answeredAt:new Date().toISOString()
-        })
-      })
+    const payloadObj = {
+      action:"saveName",
+      sessionId,
+      name,
+      answeredAt:new Date().toISOString()
+    };
+
+    const body = new URLSearchParams();
+    body.set("payload", JSON.stringify(payloadObj));
+
+    const blob = new Blob([body.toString()], {
+      type:"application/x-www-form-urlencoded;charset=UTF-8"
     });
+
+    if (navigator.sendBeacon){
+      navigator.sendBeacon(GAS_URL, blob);
+    } else {
+      fetch(GAS_URL,{
+        method:"POST",
+        headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+        body: body.toString(),
+        keepalive:true
+      }).catch(()=>{});
+    }
   }catch(e){
     // 失敗してもUXは止めない
     console.warn("name save failed", e);
   }
-
-  // 次へ（空欄でも進む）
-  location.href = `result.html?sid=${encodeURIComponent(sessionId)}`;
 }
 </script>
 </body>
 </html>
-

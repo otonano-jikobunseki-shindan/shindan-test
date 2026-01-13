@@ -18,6 +18,9 @@
       --shadow2: 0 6px 18px rgba(20,10,5,.06);
       --radius: 18px;
       --radius2: 14px;
+      --accent:#ff7a59;
+      --good1:#34d399;
+      --good2:#22c55e;
     }
     *{box-sizing:border-box}
     body{
@@ -40,24 +43,21 @@
       margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:var(--radius);
       background:rgba(255,255,255,.72);box-shadow: var(--shadow2);
     }
-    .btn{
-      appearance:none;border:1px solid #f3d2c2;background:#fff;color:var(--text);
-      padding:12px 14px;border-radius:var(--radius2);font-weight:900;cursor:pointer;width:100%;
-      box-shadow: 0 4px 12px rgba(20,10,5,.06);
-    }
-    .btn:active{transform: translateY(1px);}
-    .btn.good{
-      background: linear-gradient(90deg, #34d399, #22c55e);
-      border-color: transparent;color:#0b2b1f;
-    }
+    .hr{height:1px;background: linear-gradient(90deg, transparent, var(--line), transparent);margin:14px 0;}
     .tiny{font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px;}
+
+    .ok{
+      color:#064e3b;background: rgba(34,197,94,.10);
+      border:1px solid rgba(34,197,94,.25);
+      padding:10px;border-radius:var(--radius2);margin-top:10px;line-height:1.7;
+    }
     .err{
       color:#7f1d1d;background: rgba(239,68,68,.08);
       border:1px solid rgba(239,68,68,.25);
       padding:10px;border-radius:var(--radius2);margin-top:10px;line-height:1.7;
     }
 
-    /* ★ここだけがスクショ対象 */
+    /* ★ここだけが（将来スクショ対象にしたいなら）切り出しやすい */
     #shareTop{
       border:1px solid #f3d2c2;
       border-radius:var(--radius);
@@ -77,10 +77,66 @@
       background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.4));
       display:flex;align-items:center;justify-content:center;
       color:#9ca3af;font-weight:900;flex:0 0 auto;
+      user-select:none;
     }
     .typeBox{flex:1 1 auto;min-width:200px;}
     .typeMain{font-size:22px;font-weight:1100;margin:0 0 6px;letter-spacing:.2px;}
-    .typeSub{margin:0;color:var(--muted);line-height:1.6;}
+    .typeSub{margin:0;color:var(--muted);line-height:1.6;white-space:pre-wrap;}
+
+    .sectionTitle{
+      font-weight:1000;
+      margin:0 0 8px;
+      font-size:15px;
+    }
+    .text{
+      white-space:pre-wrap;
+      line-height:1.85;
+      margin:0;
+    }
+
+    .field{
+      width:100%;
+      padding:12px;
+      border-radius:var(--radius2);
+      border:1px solid #f3d2c2;
+      background:#fff;
+      color:var(--text);
+      font-size:16px;
+    }
+
+    .btn{
+      appearance:none;
+      border:1px solid #f3d2c2;
+      background:#fff;
+      color:var(--text);
+      padding:12px 14px;
+      border-radius:var(--radius2);
+      font-weight:900;
+      cursor:pointer;
+      width:100%;
+      box-shadow: 0 4px 12px rgba(20,10,5,.06);
+      transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .btn:active{transform: translateY(1px);}
+    .btn.good{
+      background: linear-gradient(90deg, var(--good1), var(--good2));
+      border-color: transparent;
+      color:#0b2b1f;
+    }
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+
+    .loadingRow{
+      display:flex;gap:10px;align-items:center;
+      color:var(--muted);
+      font-weight:900;
+    }
+    .spinner{
+      width:18px;height:18px;border-radius:999px;
+      border:3px solid rgba(0,0,0,.08);
+      border-top-color: rgba(0,0,0,.35);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin{to{transform: rotate(360deg)}}
   </style>
 </head>
 
@@ -88,125 +144,254 @@
   <div class="wrap">
     <div class="hero">
       <h1>診断結果</h1>
-      <p class="sub">あなたの結果が出ました。</p>
+      <p class="sub">あなたの結果を表示します。</p>
     </div>
 
-    <div class="card">
-      <!-- ★「ここだけ」領域 -->
+    <div class="card" id="statusCard">
+      <div class="loadingRow" id="loadingRow">
+        <div class="spinner"></div>
+        <div>読み込み中…</div>
+      </div>
+      <div id="msg"></div>
+      <div style="margin-top:12px;display:none;" id="retryBox">
+        <button class="btn" onclick="loadResult()">もう一度読み込む</button>
+        <div class="tiny">※集計がまだの場合、少し待ってから再読み込みしてください。</div>
+      </div>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <!-- ★上部（あなたのフォーマット） -->
       <div id="shareTop">
         <p class="who"><span id="nameSpan">あなた</span>さんは、</p>
-
         <div class="badgeRow">
           <div class="illus" id="illusBox">ILLUST</div>
-
           <div class="typeBox">
             <p class="typeMain">
               <span id="prefixSpan">接頭語</span><span id="animalSpan">動物</span>
               です！
             </p>
-            <p class="typeSub" id="typeSubLine">（ここは任意。入れないなら空でOK）</p>
           </div>
         </div>
       </div>
 
-      <div style="margin-top:14px;">
-        <button class="btn good" onclick="saveShareTopImage()">この部分だけ画像で保存</button>
-        <div class="tiny">※保存されるのは「イラスト＋接頭語＋動物＋です！まで」だけです。</div>
-      </div>
+      <div class="hr"></div>
 
-      <div id="msg"></div>
+      <p class="text" id="topText"></p>
+
+      <div class="hr"></div>
+
+      <div id="sections"></div>
+
+      <div class="hr"></div>
+
+      <!-- メール送信ブロック -->
+      <div>
+        <p class="sectionTitle">この結果全文を、メールに送信します！</p>
+        <input class="field" id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="メールアドレスを入力">
+        <div class="tiny">※メールアドレスは、結果のメール送信以外には使用しません。</div>
+        <button class="btn good" id="sendBtn" onclick="sendEmail()">このアドレスに送信する</button>
+        <div id="emailMsg"></div>
+      </div>
     </div>
   </div>
 
-  <!-- html2canvas（CDN） -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
 
-  <script>
-    // ここはあなたのGAS
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
+  const params = new URLSearchParams(location.search);
+  const sessionId = params.get("sid");
 
-    const params = new URLSearchParams(location.search);
-    const sessionId = params.get("sid");
+  const AXIS_TITLES = {
+    A: "①思考・意思決定の深層スタイル",
+    B: "②感情との距離感・扱い方",
+    C: "③自己価値感・自己肯定の源泉",
+    D: "④ストレス構造と回復パターン",
+    E: "⑤対人関係・距離感のクセ",
+    F: "⑥親密さ・恋愛における心理傾向",
+    G: "⑦性と自己理解のつながり方",
+    H: "⑧人生の進み方・停滞ポイント",
+  };
 
-    // 仮：表示（本番はGASから「回答集計」を取って埋める）
-    // name/prefix/animal を置き換えるだけでスクショ部分は完成する
-    document.getElementById("nameSpan").textContent = params.get("name") || "あなた";
-    document.getElementById("prefixSpan").textContent = params.get("prefix") || "やさしい";
-    document.getElementById("animalSpan").textContent = params.get("animal") || "オオカミ";
-    // サブ行は不要なら空にしてOK
-    // document.getElementById("typeSubLine").textContent = "";
+  function escapeHtml(s){
+    return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function setMsg(kind, text){
+    const el = document.getElementById("msg");
+    if (!text){ el.innerHTML = ""; return; }
+    el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
+  }
+  function setEmailMsg(kind, text){
+    const el = document.getElementById("emailMsg");
+    if (!text){ el.innerHTML = ""; return; }
+    el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
+  }
 
-    function setMsg(kind, text){
-      const el = document.getElementById("msg");
-      if (!text){ el.innerHTML = ""; return; }
-      el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
+  async function postToGAS(payloadObj){
+    const body = new URLSearchParams();
+    body.set("payload", JSON.stringify(payloadObj));
+
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      headers: {"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+      body: body.toString(),
+    });
+    return await res.json();
+  }
+
+  function showLoading(on){
+    document.getElementById("loadingRow").style.display = on ? "flex" : "none";
+  }
+
+  function showRetry(on){
+    document.getElementById("retryBox").style.display = on ? "block" : "none";
+  }
+
+  function renderSections(result){
+    const container = document.getElementById("sections");
+    container.innerHTML = "";
+
+    const items = [
+      ["A", result.AText],
+      ["B", result.BText],
+      ["C", result.CText],
+      ["D", result.DText],
+      ["E", result.EText],
+      ["F", result.FText],
+      ["G", result.GText],
+      ["H", result.HText],
+    ];
+
+    for (const [axis, text] of items){
+      const card = document.createElement("div");
+      card.style.marginTop = "12px";
+
+      const title = document.createElement("p");
+      title.className = "sectionTitle";
+      title.textContent = AXIS_TITLES[axis] || axis;
+
+      const p = document.createElement("p");
+      p.className = "text";
+      p.textContent = text || "";
+
+      card.appendChild(title);
+      card.appendChild(p);
+      container.appendChild(card);
+    }
+  }
+
+  async function loadResult(){
+    setMsg("", "");
+    showRetry(false);
+
+    if (!sessionId){
+      showLoading(false);
+      setMsg("err", "セッション情報(sid)が見つかりません。最初からやり直してください。");
+      showRetry(true);
+      return;
     }
 
-    function escapeHtml(s){
-      return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
+    showLoading(true);
 
-    // ★ここが「そこだけ」スクショ
-    async function saveShareTopImage(){
-      try{
-        if (!sessionId){
-          setMsg("err","セッション情報(sid)が見つかりません。最初からやり直してください。");
-          return;
-        }
-        setMsg("", "");
+    try{
+      const data = await postToGAS({ action:"getResult", sessionId });
 
-        const target = document.getElementById("shareTop");
-
-        // 画質UP（端末解像度に合わせて2倍）
-        const scale = Math.min(2, window.devicePixelRatio || 1);
-
-        const canvas = await html2canvas(target, {
-          backgroundColor: null,
-          scale,
-          useCORS: true
-        });
-
-        // 1) 端末へ保存（ダウンロード）
-        const dataUrl = canvas.toDataURL("image/png");
-        const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = `result_${sessionId}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        // 2) ついでにGASへ送る（必要ならON）
-        // await sendImageToGAS_(dataUrl, "shareTop");
-
-        setMsg("ok","画像を保存しました。");
-      }catch(e){
-        console.warn(e);
-        setMsg("err","画像の保存に失敗しました。ブラウザを変えると直る場合があります。");
+      if (!data || !data.ok){
+        showLoading(false);
+        setMsg("err", "結果の取得に失敗しました。");
+        showRetry(true);
+        return;
       }
+
+      if (!data.ready){
+        showLoading(false);
+        setMsg("err", "まだ集計が完了していないようです。少し待ってから再読み込みしてください。");
+        showRetry(true);
+        return;
+      }
+
+      const r = data.result || {};
+
+      // 表示
+      document.getElementById("nameSpan").textContent = r.name || "あなた";
+      document.getElementById("prefixSpan").textContent = r.prefixGroup || "";
+      document.getElementById("animalSpan").textContent = r.animalGroup || "";
+      document.getElementById("topText").textContent = r.topText || "";
+
+      renderSections(r);
+
+      document.getElementById("statusCard").style.display = "none";
+      document.getElementById("resultCard").style.display = "block";
+      showLoading(false);
+
+    }catch(e){
+      console.warn(e);
+      showLoading(false);
+      setMsg("err", "通信でエラーが発生しました。ネット環境を変えて再試行してください。");
+      showRetry(true);
+    }
+  }
+
+  async function sendEmail(){
+    setEmailMsg("", "");
+
+    if (!sessionId){
+      setEmailMsg("err", "セッション情報(sid)が見つかりません。");
+      return;
     }
 
-    // 任意：GASへ送信（Base64 PNG）
-    async function sendImageToGAS_(dataUrl, kind){
-      const payloadObj = {
-        action: "saveCapture",
-        sessionId,
-        kind,                 // "shareTop" など
-        imageBase64: dataUrl, // data:image/png;base64,...
-        capturedAt: new Date().toISOString()
-      };
-
-      const body = new URLSearchParams();
-      body.set("payload", JSON.stringify(payloadObj));
-
-      // keepaliveは画面遷移でも送り切るため
-      await fetch(GAS_URL, {
-        method: "POST",
-        headers: {"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-        body: body.toString(),
-        keepalive: true
-      });
+    const email = (document.getElementById("emailInput").value || "").trim();
+    if (!email){
+      setEmailMsg("err", "メールアドレスを入力してください。");
+      return;
     }
-  </script>
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      setEmailMsg("err", "メールアドレスの形式が正しくなさそうです。");
+      return;
+    }
+
+    const btn = document.getElementById("sendBtn");
+    btn.disabled = true;
+    btn.textContent = "送信中…";
+
+    try{
+      const data = await postToGAS({ action:"sendResultEmail", sessionId, email });
+
+      if (!data || !data.ok){
+        btn.disabled = false;
+        btn.textContent = "このアドレスに送信する";
+        setEmailMsg("err", "送信に失敗しました。時間を置いて再試行してください。");
+        return;
+      }
+
+      if (data.alreadySent){
+        btn.disabled = true;
+        btn.textContent = "送信済み";
+        setEmailMsg("ok", "すでに送信済みです（重複送信はしません）。");
+        return;
+      }
+
+      if (data.sent){
+        btn.disabled = true;
+        btn.textContent = "送信完了！";
+        setEmailMsg("ok", "送信しました。メールボックスをご確認ください。");
+        return;
+      }
+
+      // ここに来たら想定外
+      btn.disabled = false;
+      btn.textContent = "このアドレスに送信する";
+      setEmailMsg("err", "送信状態が不明です。もう一度試してください。");
+
+    }catch(e){
+      console.warn(e);
+      btn.disabled = false;
+      btn.textContent = "このアドレスに送信する";
+      setEmailMsg("err", "通信エラーが発生しました。ネット環境を変えて再試行してください。");
+    }
+  }
+
+  // 起動
+  loadResult();
+</script>
 </body>
 </html>
-

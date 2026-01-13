@@ -304,7 +304,37 @@
     }
   }
 
-  /* 追加：#shareTop だけを画像化して保存する */
+  /* 追加：角丸矩形（Canvas） */
+  function roundRectPath(ctx, x, y, w, h, r){
+    const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  /* 追加：テキストの折り返し（Canvas） */
+  function wrapTextLines(ctx, text, maxWidth){
+    const words = String(text || "").split("");
+    const lines = [];
+    let line = "";
+    for (const ch of words){
+      const test = line + ch;
+      if (ctx.measureText(test).width > maxWidth && line){
+        lines.push(line);
+        line = ch;
+      }else{
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  /* 追加：#shareTop を “同じ見た目” でCanvasに描画→PNG保存（Safariでも安定） */
   async function saveShareTopImage(pos){
     setShotMsg(pos, "", "");
 
@@ -318,92 +348,127 @@
     btn.textContent = "画像を作成中…";
 
     try{
-      const target = document.getElementById("shareTop");
-      if (!target){
-        throw new Error("target not found");
+      const shareTop = document.getElementById("shareTop");
+      if (!shareTop) throw new Error("shareTop not found");
+
+      // 表示中のテキストを取得（漏れない範囲のものだけ）
+      const name = (document.getElementById("nameSpan")?.textContent || "あなた").trim();
+      const prefix = (document.getElementById("prefixSpan")?.textContent || "").trim();
+      const animal = (document.getElementById("animalSpan")?.textContent || "").trim();
+
+      const rect = shareTop.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+      // 出力サイズ（shareTopに合わせる）
+      const W = Math.max(320, Math.ceil(rect.width));
+      const H = Math.max(140, Math.ceil(rect.height));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(W * dpr);
+      canvas.height = Math.ceil(H * dpr);
+
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // 背景（白）
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, W, H);
+
+      // shareTopカード
+      const pad = 14;
+      const radius = 18;
+      const borderColor = "#f3d2c2";
+      const shadowColor = "rgba(20,10,5,.05)";
+
+      ctx.save();
+      ctx.shadowColor = shadowColor;
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 6;
+
+      roundRectPath(ctx, 0, 0, W, H, radius);
+      ctx.fillStyle = "rgba(255,255,255,.86)";
+      ctx.fill();
+
+      ctx.restore();
+
+      roundRectPath(ctx, 0, 0, W, H, radius);
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // 「あなたさんは、」
+      ctx.fillStyle = "#2b2b2b";
+      ctx.font = "1000 18px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Maru Gothic ProN','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif";
+      ctx.textBaseline = "top";
+      const whoText = `${name}さんは、`;
+      ctx.fillText(whoText, pad, pad);
+
+      // 2段目：左のILLUST枠 + 右の「接頭語動物です！」
+      const rowTop = pad + 10 + 18; // who の下
+      const illusSize = 92;
+      const illusR = 18;
+
+      // illust box
+      const illusX = pad;
+      const illusY = rowTop;
+      ctx.save();
+      roundRectPath(ctx, illusX, illusY, illusSize, illusSize, illusR);
+      ctx.fillStyle = "rgba(255,255,255,.9)";
+      ctx.fill();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = "#f0c7b1";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+
+      // ILLUST text
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "900 16px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif";
+      const t = "ILLUST";
+      const tw = ctx.measureText(t).width;
+      ctx.fillText(t, illusX + (illusSize - tw)/2, illusY + (illusSize - 16)/2);
+
+      // type text (wrap if needed)
+      const typeX = illusX + illusSize + 10;
+      const typeY = illusY + 6;
+      const typeW = W - pad - typeX;
+
+      ctx.fillStyle = "#2b2b2b";
+      ctx.font = "1100 22px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Maru Gothic ProN','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif";
+      const main = `${prefix}${animal}です！`;
+      const lines = wrapTextLines(ctx, main, typeW);
+      const lineH = 28;
+      for (let i=0;i<lines.length;i++){
+        ctx.fillText(lines[i], typeX, typeY + i*lineH);
       }
 
-      // 要素サイズ（devicePixelRatioでクッキリ）
-      const rect = target.getBoundingClientRect();
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-      const pad = 0; // 追加余白が欲しければ数値を増やせます
-
-      const w = Math.ceil((rect.width + pad*2) * dpr);
-      const h = Math.ceil((rect.height + pad*2) * dpr);
-
-      // SVG foreignObjectで要素をレンダリング→Canvasへ描画
-      const clone = target.cloneNode(true);
-
-      // cloneにid重複が出ないように除去（保険）
-      clone.removeAttribute("id");
-
-      // SVG内で見た目が崩れないようにwidth固定
-      const wrapper = document.createElement("div");
-      wrapper.style.width = rect.width + "px";
-      wrapper.style.height = rect.height + "px";
-      wrapper.style.background = "transparent";
-      wrapper.appendChild(clone);
-
-      const html = new XMLSerializer().serializeToString(wrapper);
-
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width + pad*2}" height="${rect.height + pad*2}">
-          <foreignObject x="${pad}" y="${pad}" width="${rect.width}" height="${rect.height}">
-            <div xmlns="http://www.w3.org/1999/xhtml">
-              ${html}
-            </div>
-          </foreignObject>
-        </svg>
-      `;
-
-      const blob = new Blob([svg], {type:"image/svg+xml;charset=utf-8"});
-      const url = URL.createObjectURL(blob);
-
-      const img = new Image();
-      img.decoding = "async";
-
-      const loaded = await new Promise((resolve, reject) => {
-        img.onload = () => resolve(true);
-        img.onerror = () => reject(new Error("image load failed"));
-        img.src = url;
-      });
-
-      URL.revokeObjectURL(url);
-
-      // Canvas描画
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-
-      // 背景（透明だと環境によって見づらいので、shareTopに合わせて白系）
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.drawImage(img, pad, pad);
-
-      // 保存ファイル名（sidがあれば含める）
+      // ファイル名（sidがあれば含める）
       const safeSid = (sessionId || "no-sid").replace(/[^\w\-]/g, "_");
       const fileName = `result_${safeSid}.png`;
 
-      // ダウンロード
+      // 保存（Safariで確実に動く手順：toBlob→ObjectURL→a.click）
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("toBlob failed");
+
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
+      a.href = url;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-      setShotMsg(pos, "ok", "画像を保存できました！（ダウンロード/共有メニューをご確認ください）");
+      setShotMsg(pos, "ok", "画像を作成しました！（ダウンロード/共有メニューをご確認ください）");
 
       btn.textContent = "保存しました";
-      btn.disabled = false; // 連続保存もしたい場合は false のまま
+      btn.disabled = false;
       if (otherBtn) otherBtn.disabled = false;
 
     }catch(e){
       console.warn(e);
-      setShotMsg(pos, "err", "画像化に失敗しました。スクショで保存するか、別のブラウザで試してください。");
+      setShotMsg(pos, "err", "画像化に失敗しました：" + (e && e.message ? e.message : "unknown error"));
       btn.disabled = false;
       if (otherBtn) otherBtn.disabled = false;
       btn.textContent = "結果の部分だけを保存する";

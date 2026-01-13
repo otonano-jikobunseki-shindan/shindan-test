@@ -71,21 +71,32 @@
       margin:0 0 10px;
       line-height:1.4;
     }
-    .badgeRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-    .illus{
-      width:120px;height:120px;border-radius:18px;border:1px dashed #f0c7b1;
-      background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.4));
-      display:flex;align-items:center;justify-content:center;
-      color:#9ca3af;font-weight:900;flex:0 0 auto;
-      user-select:none;
-      overflow:hidden; /* ★追加：角丸に合わせて画像がはみ出さない */
+    .badgeRow{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      align-items:center;
     }
+
+    /* ★追加：イラスト枠そのもの（今まで無かったので追記が必要） */
+    .illus{
+      width:100%;
+      height:auto;
+      aspect-ratio: 16 / 9;   /* 横長。正方形が良ければ 1 / 1 */
+      border:none;            /* 点線枠いらない */
+      border-radius:18px;
+      background: rgba(255,255,255,.6);
+      overflow:hidden;
+      display:block;
+    }
+
     /* ★追加：イラスト画像表示用（枠内にぴったり収める） */
     .illus img{
       width:100%;
       height:100%;
       object-fit:cover;
       display:block;
+    }
     }
 
     .typeBox{flex:1 1 auto;min-width:200px;}
@@ -441,86 +452,84 @@
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // 「あなたさんは、」
-      ctx.fillStyle = "#2b2b2b";
-      ctx.font = "1000 18px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Maru Gothic ProN','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif";
-      ctx.textBaseline = "top";
-      const whoText = `${name}さんは、`;
-      ctx.fillText(whoText, pad, pad);
 
-      // 2段目：左のILLUST枠 + 右の「接頭語動物です！」
-      const rowTop = pad + 10 + 18; // who の下
-      const illusSize = 92;
-      const illusR = 18;
+// ===== ここから差し替え（縦並び・中央・横幅いっぱい画像） =====
 
-     // illust box（枠はそのまま描く）
-　　　const illusX = pad;
-　　　const illusY = rowTop;
+// 「あなたさんは、」(中央)
+ctx.fillStyle = "#2b2b2b";
+ctx.textBaseline = "top";
+ctx.font = "1000 18px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Maru Gothic ProN','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif";
+const whoText = `${name}さんは、`;
+const whoW = ctx.measureText(whoText).width;
+ctx.fillText(whoText, (W - whoW)/2, pad);
 
-　　　ctx.save();
-　　　roundRectPath(ctx, illusX, illusY, illusSize, illusSize, illusR);
-　　　ctx.fillStyle = "rgba(255,255,255,.9)";
-　　　ctx.fill();
-　　　ctx.setLineDash([4, 4]);
-　　　ctx.strokeStyle = "#f0c7b1";
-　　　ctx.lineWidth = 1;
-　　　ctx.stroke();
-　　　ctx.restore();
+let y = pad + 18 + 12; // whoの下
 
-　　　// ★ここから：実画像があればCanvasに描画する
-　　　const illusImgEl = document.querySelector("#illusBox img");
-　　　const illusSrc = illusImgEl?.src || "";
+// 画像エリア（横幅いっぱい）
+const imgX = pad;
+const imgW = W - pad*2;
 
-　　　if (illusSrc){
-　　　  const img = new Image();
-　　　  img.crossOrigin = "anonymous"; // 同一オリジンなら実質不要だが保険
-　　　  await new Promise((resolve, reject) => {
-　　　    img.onload = resolve;
-　　　    img.onerror = reject;
-　　　    img.src = illusSrc;
-　　　  });
+// 表示側CSSの aspect-ratio と合わせる（16/9 なら↓）
+const imgH = Math.round(imgW * 9 / 16);
 
-　　　  // 角丸クリップして、枠内に cover で描く（object-fit:cover相当）
-　　　  ctx.save();
-　　　  roundRectPath(ctx, illusX, illusY, illusSize, illusSize, illusR);
-　　　  ctx.clip();
+// 角丸クリップして背景描画
+ctx.save();
+roundRectPath(ctx, imgX, y, imgW, imgH, 18);
+ctx.fillStyle = "rgba(255,255,255,.6)";
+ctx.fill();
+ctx.clip();
 
-　　　  const iw = img.naturalWidth || img.width;
-　　　  const ih = img.naturalHeight || img.height;
+// 実画像があれば描画（cover）
+const illusImgEl = document.querySelector("#illusBox img");
+const illusSrc = illusImgEl?.src || "";
 
-　　　  // cover計算
-　　　  const scale = Math.max(illusSize / iw, illusSize / ih);
-　　　  const dw = iw * scale;
-　　　  const dh = ih * scale;
-　　　  const dx = illusX + (illusSize - dw) / 2;
-　　　  const dy = illusY + (illusSize - dh) / 2;
+if (illusSrc){
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
+    img.src = illusSrc;
+  });
 
-　　　  ctx.drawImage(img, dx, dy, dw, dh);
-　　　  ctx.restore();
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
 
-　　　}else{
-　　　  // 画像が無いなら従来通りプレースホルダ
-　　　  ctx.fillStyle = "#9ca3af";
-　　　  ctx.font = "900 16px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif";
-　　　  const t = "ILLUST";
-　　　  const tw = ctx.measureText(t).width;
-　　　  ctx.fillText(t, illusX + (illusSize - tw)/2, illusY + (illusSize - 16)/2);
-　　　}
+  const scale = Math.max(imgW / iw, imgH / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const dx = imgX + (imgW - dw) / 2;
+  const dy = y + (imgH - dh) / 2;
 
+  ctx.drawImage(img, dx, dy, dw, dh);
+}else{
+  // 画像が無い場合のプレースホルダ（薄いテキスト）
+  ctx.fillStyle = "rgba(156,163,175,.9)";
+  ctx.font = "900 16px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif";
+  const t = "ILLUST";
+  const tw = ctx.measureText(t).width;
+  ctx.fillText(t, imgX + (imgW - tw)/2, y + (imgH - 16)/2);
+}
+ctx.restore();
 
-      // type text (wrap if needed)
-      const typeX = illusX + illusSize + 10;
-      const typeY = illusY + 6;
-      const typeW = W - pad - typeX;
+y += imgH + 12;
 
-      ctx.fillStyle = "#2b2b2b";
-      ctx.font = "1100 22px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Maru Gothic ProN','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif";
-      const main = `${prefix}${animal}です！`;
-      const lines = wrapTextLines(ctx, main, typeW);
-      const lineH = 28;
-      for (let i=0;i<lines.length;i++){
-        ctx.fillText(lines[i], typeX, typeY + i*lineH);
-      }
+// 結果テキスト（中央揃え・wrap）
+ctx.fillStyle = "#2b2b2b";
+ctx.font = "1100 22px ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Maru Gothic ProN','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif";
+
+const main = `${prefix}${animal}です！`;
+const lines = wrapTextLines(ctx, main, W - pad*2);
+const lineH = 28;
+
+for (let i=0;i<lines.length;i++){
+  const line = lines[i];
+  const lw = ctx.measureText(line).width;
+  ctx.fillText(line, (W - lw)/2, y + i*lineH);
+}
+
+// ===== ここまで差し替え =====
+
 
       // ファイル名（sidがあれば含める）
       const safeSid = (sessionId || "no-sid").replace(/[^\w\-]/g, "_");

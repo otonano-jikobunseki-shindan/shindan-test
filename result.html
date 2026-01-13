@@ -78,7 +78,7 @@
       display:flex;align-items:center;justify-content:center;
       color:#9ca3af;font-weight:900;flex:0 0 auto;
       user-select:none;
-      overflow:hidden;
+      overflow:hidden; /* ★追加：角丸に合わせて画像がはみ出さない */
     }
     /* ★追加：イラスト画像表示用（枠内にぴったり収める） */
     .illus img{
@@ -343,40 +343,36 @@
     return lines;
   }
 
-  /* ★追加（今回の主役）：イラスト表示
-     - result.illustrationNo を受け取って illusBox に画像を入れる
-     - デフォルトは `illust/<No>.png`（GitHub Pagesに置く前提）
-     - ファイル名が違う場合は ILLUST_MAP だけ編集すればOK
-  */
-  const ILLUST_BASE = "assets/illust/";   // 例: "assets/illust/" にしたいならここだけ変更
-  const ILLUST_EXT  = ".png";      // .webp などにしたいならここだけ変更
-
-  const ILLUST_MAP = {
-    // "1": "illust/001.png",
-    // "2": "illust/002.png",
-    // みたいに個別指定したい時だけ使う（未指定ならデフォルトに落ちる）
-  };
+  /* ============================
+   * ★追加：イラスト表示（assets/illust/{No}.png）
+   * ============================ */
+  const ILLUST_BASE = "assets/illust/"; // ←ここ固定
+  const ILLUST_EXT  = ".png";
 
   function setIllustrationByNo(no){
     const box = document.getElementById("illusBox");
     if (!box) return;
 
     const n = String(no == null ? "" : no).trim();
+
+    // Noが無い/空ならプレースホルダ表示
     if (!n){
-      box.innerHTML = "ILLUST";
+      box.textContent = "ILLUST";
       return;
     }
 
-    const src = ILLUST_MAP[n] || (ILLUST_BASE + encodeURIComponent(n) + ILLUST_EXT);
+    // パス生成（例: assets/illust/12.png）
+    const src = ILLUST_BASE + encodeURIComponent(n) + ILLUST_EXT;
 
+    // いったん枠を空にして画像を差し込む
     box.innerHTML = "";
     const img = document.createElement("img");
     img.alt = "診断イラスト";
     img.src = src;
 
+    // 画像が404ならプレースホルダに戻す
     img.onerror = () => {
-      // 画像が無い時は文字に戻す（壊れアイコンを出さない）
-      box.innerHTML = "ILLUST";
+      box.textContent = "ILLUST";
     };
 
     box.appendChild(img);
@@ -561,7 +557,7 @@
       document.getElementById("animalSpan").textContent = r.animalGroup || "";
       document.getElementById("topText").textContent = r.topText || "";
 
-      // ★追加：イラストNo.で画像表示（GAS側の result.illustrationNo を使う）
+      // ★追加：イラストNoで表示（assets/illust/{No}.png）
       setIllustrationByNo(r.illustrationNo);
 
       renderSections(r);

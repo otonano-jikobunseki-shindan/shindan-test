@@ -5,276 +5,237 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
   <title>大人の診断テスト</title>
-  <style>
-  :root{
-    /* 温かい配色（クリーム×ピーチ×ココア） */
-    --bg1:#fff7ef;
-    --bg2:#fff1f6;
-
-    --card:#ffffffcc;
-    --text:#2b2b2b;
-    --muted:#6b7280;
-
-    --accent:#ff7a59;   /* コーラル */
-    --accent2:#34d399;  /* やさしいグリーン */
-    --danger:#ef4444;
-
-    --line:#f1d7c8;
-
-    --shadow: 0 10px 30px rgba(20,10,5,.08);
-    --shadow2: 0 6px 18px rgba(20,10,5,.06);
-
-    --radius: 18px;
-    --radius2: 14px;
+　<style>
+  :root {
+    /* 信頼感と優しさを両立するパレット */
+    --bg1: #fffaf7;    /* 暖かみのある白 */
+    --bg2: #fff0eb;    /* 柔らかいピーチ */
+    --card: #ffffff;
+    --text: #443d3a;   /* 柔らかい濃茶 */
+    --muted: #8e847e;  /* 落ち着いたベージュグレー */
+    --accent: #ff8a6b;  /* 安心感のあるコーラル */
+    --accent-light: #fff0eb;
+    --accent2: #6bc2a5; /* 優しいミントグリーン */
+    --line: #eee0d9;
+    --shadow: 0 12px 30px rgba(180, 140, 120, 0.12);
+    --shadow-sm: 0 4px 12px rgba(180, 140, 120, 0.08);
+    --radius: 24px;
+    --radius-sm: 16px;
   }
 
-  *{box-sizing:border-box}
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-  body{
-    margin:0;
-    font-family: ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto,
-      "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
-      "Yu Gothic", sans-serif;
-    background: radial-gradient(1200px 700px at 20% 10%, var(--bg2), transparent 60%),
-                radial-gradient(1200px 700px at 80% 0%, #fffbe6, transparent 55%),
-                linear-gradient(180deg, var(--bg1), #ffffff);
-    color:var(--text);
+  body {
+    margin: 0;
+    font-family: "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.6;
   }
 
-  a{color:inherit}
-
-  .wrap{
-    max-width:760px;
-    margin:0 auto;
-    padding:18px 14px 40px;
+  .wrap {
+    max-width: 500px; /* スマホで見やすい幅に凝縮 */
+    margin: 0 auto;
+    padding: 24px 16px 60px;
   }
 
-  .hero{
-    padding:18px 16px;
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    background:rgba(255,255,255,.78);
+  /* ヒーローエリア：よりウェルカムな印象に */
+  .hero {
+    padding: 32px 24px;
+    border: none;
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.9);
     box-shadow: var(--shadow);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(8px);
+    text-align: center;
+    margin-bottom: 24px;
   }
 
-  h1{
-    font-size:22px;
-    margin:0 0 8px;
-    letter-spacing: .2px;
+  h1 {
+    font-size: 20px;
+    margin: 0 0 12px;
+    color: var(--text);
+    line-height: 1.4;
+    font-weight: 800;
   }
 
-  .sub{
-    color:var(--muted);
-    line-height:1.7;
-    margin:0;
+  .sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
   }
 
-  .card{
-    margin-top:14px;
-    padding:16px;
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    background:rgba(255,255,255,.72);
-    box-shadow: var(--shadow2);
+  /* カードデザイン：枠線をなくし、柔らかい影で浮き立たせる */
+  .card {
+    margin-top: 16px;
+    padding: 24px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow);
   }
 
-  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
 
-  .btn{
-    appearance:none;
-    border:1px solid #f3d2c2;
-    background:#ffffff;
-    color:var(--text);
-    padding:12px 14px;
-    border-radius:var(--radius2);
-    font-weight:800;
-    cursor:pointer;
-    flex:1;
-    min-width:140px;
-    box-shadow: 0 4px 12px rgba(20,10,5,.06);
-    transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease;
+  /* ボタン：角丸を強調し、立体感のあるグラデーションに */
+  .btn {
+    appearance: none;
+    border: 2px solid var(--line);
+    background: #fff;
+    color: var(--text);
+    padding: 14px 20px;
+    border-radius: 999px; /* 完全に丸く */
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 120px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .btn:hover{
-    border-color:#f0bfa8;
-    box-shadow: 0 8px 18px rgba(20,10,5,.08);
+  .btn:active { transform: scale(0.96); }
+
+  .btn.primary {
+    background: linear-gradient(135deg, #ff9a7b 0%, #ff7a59 100%);
+    border: none;
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(255, 122, 89, 0.3);
   }
 
-  .btn:active{
-    transform: translateY(1px);
+  .btn.good {
+    background: linear-gradient(135deg, #7bcea6 0%, #5ab68e 100%);
+    border: none;
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(90, 182, 142, 0.2);
   }
 
-  .btn.primary{
-    background: linear-gradient(90deg, #ff8a6b, #ff6b8a);
-    border-color: transparent;
-    color:#fff;
-  }
-
-  .btn.good{
-    background: linear-gradient(90deg, #34d399, #22c55e);
-    border-color: transparent;
-    color:#0b2b1f;
-  }
-
-  .btn.ghost{
+  .btn.ghost {
     background: transparent;
+    border: none;
+    color: var(--muted);
+    text-decoration: underline;
     box-shadow: none;
   }
 
-  .btn.danger{
-    background: rgba(239,68,68,.08);
-    border-color: rgba(239,68,68,.28);
-    color:#7f1d1d;
-    box-shadow:none;
+  .btn.danger {
+    background: #fff5f5;
+    border: 1px solid #fed7d7;
+    color: #c53030;
+    box-shadow: none;
   }
 
-  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .btn:disabled { opacity: 0.4; filter: grayscale(1); }
 
-  .label{
-    font-size:12px;
-    color:var(--muted);
-    margin:0 0 8px;
+  /* プログレスバー：太くして「進んでいる感」を出す */
+  .label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: block;
   }
 
-  .progress{
-    height:10px;
-    background:#fff;
-    border:1px solid var(--line);
-    border-radius:999px;
-    overflow:hidden;
-    box-shadow: inset 0 1px 3px rgba(20,10,5,.05);
+  .progress {
+    height: 12px;
+    background: #fdf2ef;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 24px;
   }
 
-  .bar{
-    height:100%;
-    width:0%;
-    background: linear-gradient(90deg, #ff8a6b, #34d399);
-    transition:width .25s;
+  .bar {
+    height: 100%;
+    background: linear-gradient(90deg, #ff9a7b, #6bc2a5);
+    border-radius: 999px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  .qtitle{
-    font-size:16px;
-    font-weight:900;
-    margin:0 0 10px;
-    line-height:1.6;
+  /* 質問ブロック：カード間の余白を広げ、視認性を向上 */
+  .qblock {
+    border: none;
+    border-radius: var(--radius);
+    padding: 24px;
+    margin: 24px 0;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
   }
 
-  .opt{
-    display:block;
-    width:100%;
-    text-align:left;
-    margin:10px 0;
-    padding:12px 12px;
-    border-radius:var(--radius2);
-    border:1px solid #f3d2c2;
-    background:#fff;
-    color:var(--text);
-    cursor:pointer;
-    box-shadow: 0 3px 10px rgba(20,10,5,.05);
-    transition: transform .06s ease, border-color .2s ease;
+  .qnum {
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 2px 10px;
+    border-radius: 999px;
+    display: inline-block;
+    margin-bottom: 12px;
   }
 
-  .opt:hover{
-    border-color:#f0bfa8;
+  .qtitle {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 0 0 16px;
+    line-height: 1.5;
   }
 
-  .opt:active{
-    transform: translateY(1px);
+  /* 選択肢ボタン：より「押しやすい」デザインに */
+  .opt {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin: 12px 0;
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    border: 2px solid #fdf2ef;
+    background: #fff;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.2s ease;
   }
 
-  .opt.selected{
-    outline: 3px solid rgba(255,122,89,.28);
-    border-color:#ffb19b;
+  .opt:hover { background: #fffaf9; border-color: var(--accent); }
+
+  .opt.selected {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 4px 12px rgba(255, 122, 89, 0.1);
   }
 
-  .tiny{
-    font-size:12px;
-    color:var(--muted);
-    line-height:1.7;
+  .pill {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: #fff;
+    border: 1px solid var(--line);
+    color: var(--muted);
   }
 
-  .field{
-    width:100%;
-    padding:12px;
-    border-radius:var(--radius2);
-    border:1px solid #f3d2c2;
-    background:#fff;
-    color:var(--text);
-    font-size:16px;
+  .field {
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--line);
+    font-size: 16px;
+    margin-bottom: 12px;
   }
 
-  select.field{appearance:auto;}
-
-  .hr{
-    height:1px;
-    background: linear-gradient(90deg, transparent, var(--line), transparent);
-    margin:14px 0;
+  .mutedBox {
+    background: #fdfaf8;
+    border: 1px dashed var(--line);
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    font-size: 13px;
   }
 
-  .pill{
-    display:inline-block;
-    padding:6px 10px;
-    border:1px solid #f3d2c2;
-    border-radius:999px;
-    color:#6b7280;
-    font-size:12px;
-    background:rgba(255,255,255,.75);
-  }
-
-  .mono{
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  }
-
-  .err{
-    color:#7f1d1d;
-    background: rgba(239,68,68,.08);
-    border:1px solid rgba(239,68,68,.25);
-    padding:10px;
-    border-radius:var(--radius2);
-    margin-top:10px;
-  }
-
-  .ok{
-    color:#064e3b;
-    background: rgba(34,197,94,.10);
-    border:1px solid rgba(34,197,94,.25);
-    padding:10px;
-    border-radius:var(--radius2);
-    margin-top:10px;
-  }
-
-  .mutedBox{
-    border:1px dashed #f0c7b1;
-    border-radius:var(--radius2);
-    padding:10px;
-    color:var(--muted);
-    line-height:1.8;
-    background: rgba(255,255,255,.55);
-  }
-
-  /* 10問表示 */
-  .qblock{
-    border:1px solid #f3d2c2;
-    border-radius:var(--radius);
-    padding:12px;
-    margin:12px 0;
-    background: rgba(255,255,255,.75);
-    box-shadow: 0 6px 18px rgba(20,10,5,.05);
-  }
-
-  .qhead{
-    display:flex;
-    gap:8px;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:8px;
-    flex-wrap:wrap;
-  }
-
-  .qnum{font-weight:900}
-  .qopt{margin:8px 0}
-</style>
+  .tiny { font-size: 12px; opacity: 0.8; }
+  .hr { height: 1px; background: var(--line); margin: 24px 0; opacity: 0.5; }
+　</style>
 </head>
 <body>
   <div class="wrap">

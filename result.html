@@ -137,6 +137,9 @@
       animation: spin 0.9s linear infinite;
     }
     @keyframes spin{to{transform: rotate(360deg)}}
+
+    /* 追加：スクショ（画像保存）ボタン周り */
+    .shotBox{margin-top:10px;}
   </style>
 </head>
 
@@ -174,6 +177,13 @@
         </div>
       </div>
 
+      <!-- 追加：ボタン（上側） -->
+      <div class="shotBox">
+        <button class="btn" id="shotBtnTop" onclick="saveShareTopImage('top')">結果の部分だけを保存する</button>
+        <div class="tiny">※この部分から、性に関する回答内容が漏れる心配はありません。</div>
+        <div id="shotMsgTop"></div>
+      </div>
+
       <div class="hr"></div>
 
       <p class="text" id="topText"></p>
@@ -189,7 +199,15 @@
         <p class="sectionTitle">この結果全文を、メールに送信します！</p>
         <input class="field" id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="メールアドレスを入力">
         <div class="tiny">※メールアドレスは、結果のメール送信以外には使用しません。</div>
-        <button class="btn good" id="sendBtn" onclick="sendEmail()">このアドレスに送信する</button>
+
+        <!-- 追加：ボタン（メール入力の下） -->
+        <div class="shotBox" style="margin-top:10px;">
+          <button class="btn" id="shotBtnBottom" onclick="saveShareTopImage('bottom')">結果の部分だけを保存する</button>
+          <div class="tiny">※この部分から、性に関する回答内容が漏れる心配はありません。</div>
+          <div id="shotMsgBottom"></div>
+        </div>
+
+        <button class="btn good" id="sendBtn" onclick="sendEmail()" style="margin-top:10px;">このアドレスに送信する</button>
         <div id="emailMsg"></div>
       </div>
     </div>
@@ -222,6 +240,13 @@
   }
   function setEmailMsg(kind, text){
     const el = document.getElementById("emailMsg");
+    if (!text){ el.innerHTML = ""; return; }
+    el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
+  }
+
+  /* 追加：スクショ保存メッセージ */
+  function setShotMsg(pos, kind, text){
+    const el = document.getElementById(pos === "bottom" ? "shotMsgBottom" : "shotMsgTop");
     if (!text){ el.innerHTML = ""; return; }
     el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
   }
@@ -276,6 +301,112 @@
       card.appendChild(title);
       card.appendChild(p);
       container.appendChild(card);
+    }
+  }
+
+  /* 追加：#shareTop だけを画像化して保存する */
+  async function saveShareTopImage(pos){
+    setShotMsg(pos, "", "");
+
+    const btn = document.getElementById(pos === "bottom" ? "shotBtnBottom" : "shotBtnTop");
+    const otherBtn = document.getElementById(pos === "bottom" ? "shotBtnTop" : "shotBtnBottom");
+
+    if (!btn) return;
+
+    btn.disabled = true;
+    if (otherBtn) otherBtn.disabled = true;
+    btn.textContent = "画像を作成中…";
+
+    try{
+      const target = document.getElementById("shareTop");
+      if (!target){
+        throw new Error("target not found");
+      }
+
+      // 要素サイズ（devicePixelRatioでクッキリ）
+      const rect = target.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const pad = 0; // 追加余白が欲しければ数値を増やせます
+
+      const w = Math.ceil((rect.width + pad*2) * dpr);
+      const h = Math.ceil((rect.height + pad*2) * dpr);
+
+      // SVG foreignObjectで要素をレンダリング→Canvasへ描画
+      const clone = target.cloneNode(true);
+
+      // cloneにid重複が出ないように除去（保険）
+      clone.removeAttribute("id");
+
+      // SVG内で見た目が崩れないようにwidth固定
+      const wrapper = document.createElement("div");
+      wrapper.style.width = rect.width + "px";
+      wrapper.style.height = rect.height + "px";
+      wrapper.style.background = "transparent";
+      wrapper.appendChild(clone);
+
+      const html = new XMLSerializer().serializeToString(wrapper);
+
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width + pad*2}" height="${rect.height + pad*2}">
+          <foreignObject x="${pad}" y="${pad}" width="${rect.width}" height="${rect.height}">
+            <div xmlns="http://www.w3.org/1999/xhtml">
+              ${html}
+            </div>
+          </foreignObject>
+        </svg>
+      `;
+
+      const blob = new Blob([svg], {type:"image/svg+xml;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+
+      const img = new Image();
+      img.decoding = "async";
+
+      const loaded = await new Promise((resolve, reject) => {
+        img.onload = () => resolve(true);
+        img.onerror = () => reject(new Error("image load failed"));
+        img.src = url;
+      });
+
+      URL.revokeObjectURL(url);
+
+      // Canvas描画
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+
+      // 背景（透明だと環境によって見づらいので、shareTopに合わせて白系）
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.drawImage(img, pad, pad);
+
+      // 保存ファイル名（sidがあれば含める）
+      const safeSid = (sessionId || "no-sid").replace(/[^\w\-]/g, "_");
+      const fileName = `result_${safeSid}.png`;
+
+      // ダウンロード
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setShotMsg(pos, "ok", "画像を保存できました！（ダウンロード/共有メニューをご確認ください）");
+
+      btn.textContent = "保存しました";
+      btn.disabled = false; // 連続保存もしたい場合は false のまま
+      if (otherBtn) otherBtn.disabled = false;
+
+    }catch(e){
+      console.warn(e);
+      setShotMsg(pos, "err", "画像化に失敗しました。スクショで保存するか、別のブラウザで試してください。");
+      btn.disabled = false;
+      if (otherBtn) otherBtn.disabled = false;
+      btn.textContent = "結果の部分だけを保存する";
     }
   }
 

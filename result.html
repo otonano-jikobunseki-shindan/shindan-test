@@ -271,17 +271,38 @@
     el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
   }
 
-  async function postToGAS(payloadObj){
-    const body = new URLSearchParams();
-    body.set("payload", JSON.stringify(payloadObj));
+async function postToGAS(payloadObj){
+  const maxTry = 5;
+  for (let t=1; t<=maxTry; t++){
+    try{
+      const body = new URLSearchParams();
+      body.set("payload", JSON.stringify(payloadObj));
 
-    const res = await fetch(GAS_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-      body: body.toString(),
-    });
-    return await res.json();
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        headers: {"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+        body: body.toString(),
+      });
+
+      const text = await res.text();
+      let json = {};
+      try{ json = JSON.parse(text); }catch(_){}
+
+      if (json && json.ok === false && json.error === "busy"){
+        const wait = Number(json.retryAfterMs || 800);
+        await new Promise(r => setTimeout(r, wait + Math.floor(Math.random()*200)));
+        continue;
+      }
+      return json;
+
+    }catch(err){
+      if (t === maxTry) throw err;
+      const backoff = Math.min(2000, 300 * (2 ** (t-1)));
+      await new Promise(r => setTimeout(r, backoff + Math.floor(Math.random()*200)));
+    }
   }
+}
+
 
   function showLoading(on){
     document.getElementById("loadingRow").style.display = on ? "flex" : "none";

@@ -89,6 +89,38 @@
 
 <script>
 const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
+  async function postGASWithRetry(payloadObj, keepalive=true){
+  const maxTry = 5;
+  for (let t=1; t<=maxTry; t++){
+    try{
+      await postGASWithRetry({
+        action:"saveName",
+        sessionId,
+        name,
+        answeredAt:new Date().toISOString()
+      }, true);
+
+
+      // GASはjson_で返すので text→parse が安全
+      const text = await res.text();
+      let json = {};
+      try{ json = JSON.parse(text); }catch(_){}
+
+      if (json && json.ok === false && json.error === "busy"){
+        const wait = Number(json.retryAfterMs || 800);
+        await new Promise(r => setTimeout(r, wait + Math.floor(Math.random()*200)));
+        continue;
+      }
+      return json;
+
+    }catch(err){
+      if (t === maxTry) throw err;
+      const backoff = Math.min(2000, 300 * (2 ** (t-1)));
+      await new Promise(r => setTimeout(r, backoff + Math.floor(Math.random()*200)));
+    }
+  }
+}
+
 
 const params = new URLSearchParams(location.search);
 const sessionId = params.get("sid");
@@ -169,21 +201,14 @@ async function submitName(){
 
     (async ()=>{
       for (const qid of qids){
-        const body = new URLSearchParams();
-        body.set("payload", JSON.stringify({
-          action:"logAnswersBatch",
-          sessionId:sid,
-          gender,
-          answeredAt:new Date().toISOString(),
-          answers:[{qid, opt:answers[qid]}]
-        }));
+await postGASWithRetry({
+  action:"logAnswersBatch",
+  sessionId:sid,
+  gender,
+  answeredAt:new Date().toISOString(),
+  answers:[{qid, opt:answers[qid]}]
+}, true);
 
-        await fetch(GAS_URL,{
-          method:"POST",
-          headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-          body: body.toString(),
-          keepalive:true
-        });
 
         sentMap[qid]=true;
         localStorage.setItem("diag_sent",JSON.stringify(sentMap));

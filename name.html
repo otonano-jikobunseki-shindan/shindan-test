@@ -89,17 +89,20 @@
 
 <script>
 const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZKRjVLT2EF6grR5nfc2otxiky6jdaRBiFhskvjoemWUlOn/exec";
-  async function postGASWithRetry(payloadObj, keepalive=true){
+
+async function postGASWithRetry(payloadObj, keepalive=true){
   const maxTry = 5;
   for (let t=1; t<=maxTry; t++){
     try{
-      await postGASWithRetry({
-        action:"saveName",
-        sessionId,
-        name,
-        answeredAt:new Date().toISOString()
-      }, true);
+      const body = new URLSearchParams();
+      body.set("payload", JSON.stringify(payloadObj));
 
+      const res = await fetch(GAS_URL,{
+        method:"POST",
+        headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+        body: body.toString(),
+        keepalive: !!keepalive
+      });
 
       // GASはjson_で返すので text→parse が安全
       const text = await res.text();
@@ -120,7 +123,6 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbz0nSbcIZKV6P3d8NPu1mZK
     }
   }
 }
-
 
 const params = new URLSearchParams(location.search);
 const sessionId = params.get("sid");
@@ -154,22 +156,12 @@ async function submitName(){
   const name = document.getElementById("nameInput").value.trim();
 
   try{
-    const payloadObj = {
+    await postGASWithRetry({
       action:"saveName",
       sessionId,
       name,
       answeredAt:new Date().toISOString()
-    };
-
-    const body = new URLSearchParams();
-    body.set("payload", JSON.stringify(payloadObj));
-
-    await fetch(GAS_URL,{
-      method:"POST",
-      headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-      body: body.toString(),
-      keepalive:true
-    });
+    }, true);
 
     allDone.name = true;
     tryFinish();
@@ -201,14 +193,13 @@ async function submitName(){
 
     (async ()=>{
       for (const qid of qids){
-await postGASWithRetry({
-  action:"logAnswersBatch",
-  sessionId:sid,
-  gender,
-  answeredAt:new Date().toISOString(),
-  answers:[{qid, opt:answers[qid]}]
-}, true);
-
+        await postGASWithRetry({
+          action:"logAnswersBatch",
+          sessionId:sid,
+          gender,
+          answeredAt:new Date().toISOString(),
+          answers:[{qid, opt:answers[qid]}]
+        }, true);
 
         sentMap[qid]=true;
         localStorage.setItem("diag_sent",JSON.stringify(sentMap));

@@ -1089,7 +1089,7 @@ async function sendCurrentPageBatch_(opts={}){
   const statusEl = statusElId ? document.getElementById(statusElId) : null;
 
   if (runtime.inflight){
-    if (statusEl) statusEl.innerHTML = `<div class="tiny">（送信中…）</div>`;
+    if (statusEl) statusEl.innerHTML = ``;
     return;
   }
 
@@ -1101,7 +1101,7 @@ async function sendCurrentPageBatch_(opts={}){
     const qids = currentPageQids_();
     for (const qid of qids){
       if (!runtime.answers[qid]){
-        if (statusEl) statusEl.innerHTML = `<div class="tiny">（未回答があるので送信できません）</div>`;
+        if (statusEl) statusEl.innerHTML = ``;
         return;
       }
     }
@@ -1109,14 +1109,14 @@ async function sendCurrentPageBatch_(opts={}){
 
   const targets = currentPageTargets_(); // 回答済&未送信だけ
   if (targets.length === 0){
-    if (statusEl) statusEl.innerHTML = `<div class="tiny">（送信対象がありません）</div>`;
+    if (statusEl) statusEl.innerHTML = ``;
     return;
   }
 
   runtime.inflight = true;
   saveLS();
 
-  if (statusEl) statusEl.innerHTML = `<div class="tiny">送信中…（${targets.length}件）</div>`;
+  if (statusEl) statusEl.innerHTML = ``;
 
   try{
     const payload = {
@@ -1138,12 +1138,12 @@ async function sendCurrentPageBatch_(opts={}){
       }
 
       saveLS();
-      if (statusEl) statusEl.innerHTML = `<div class="ok tiny">送信OK：${targets.length}件</div>`;
+      if (statusEl) statusEl.innerHTML = ``;
     } else {
-      if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信失敗（通信が落ち着いたら再度「今すぐ送信」してください）</div>`;
+      if (statusEl) statusEl.innerHTML = ``;
     }
   }catch(_){
-    if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信失敗（通信が不安定です。時間をおいて再送してください）</div>`;
+    if (statusEl) statusEl.innerHTML = ``;
   }finally{
     runtime.inflight = false;
     saveLS();
@@ -1156,7 +1156,7 @@ async function sendAllUnsentUpTo10_(opts={}){
   const statusEl = statusElId ? document.getElementById(statusElId) : null;
 
   if (runtime.inflight){
-    if (statusEl) statusEl.innerHTML = `<div class="tiny">（送信中…）</div>`;
+    if (statusEl) statusEl.innerHTML = ``;
     return;
   }
 
@@ -1165,13 +1165,13 @@ async function sendAllUnsentUpTo10_(opts={}){
   const targets = qids.filter(qid => !runtime.sentMap[qid]).slice(0, PAGE_SIZE).map(qid => ({ qid, opt: runtime.answers[qid] }));
 
   if (targets.length === 0){
-    if (statusEl) statusEl.innerHTML = `<div class="tiny">（未送信はありません）</div>`;
+    if (statusEl) statusEl.innerHTML = ``;
     return;
   }
 
   runtime.inflight = true;
   saveLS();
-  if (statusEl) statusEl.innerHTML = `<div class="tiny">送信中…（${targets.length}件）</div>`;
+  if (statusEl) statusEl.innerHTML = ``;
 
   try{
     const r = await postGAS({
@@ -1185,12 +1185,12 @@ async function sendAllUnsentUpTo10_(opts={}){
     if (r?.ok){
       targets.forEach(x => runtime.sentMap[x.qid] = true);
       saveLS();
-      if (statusEl) statusEl.innerHTML = `<div class="ok tiny">送信OK：${targets.length}件</div>`;
+      if (statusEl) statusEl.innerHTML = ``;
     } else {
-      if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信失敗</div>`;
+      if (statusEl) statusEl.innerHTML = ``;
     }
   }catch(_){
-    if (statusEl) statusEl.innerHTML = `<div class="err tiny">送信失敗</div>`;
+    if (statusEl) statusEl.innerHTML = ``;
   }finally{
     runtime.inflight = false;
     saveLS();
@@ -1211,11 +1211,11 @@ async function resendAllUnsentAfterMbti_(opts={}){
   const unsent = allQids.filter(qid => !runtime.sentMap[qid]);
 
   if (unsent.length === 0){
-    if (statusEl) statusEl.innerHTML = `<div class="ok tiny">送信漏れはありません。</div>`;
+    if (statusEl) statusEl.innerHTML = ``;
     return;
   }
 
-  if (statusEl) statusEl.innerHTML = `<div class="tiny">送信漏れを再送しています…（${unsent.length}件）</div>`;
+  if (statusEl) statusEl.innerHTML = ``;
 
   // 最大5回（50件）を想定。必要なら増やせるが今回は最小。
   const maxLoops = Math.ceil(Math.min(unsent.length, 50) / PAGE_SIZE);
@@ -1387,7 +1387,7 @@ function renderMbti(){
 ========================= */
 async function saveMbtiAndGoHandoff(){
   const msg = document.getElementById("msg");
-  msg.innerHTML = `<div class="tiny">送信準備中…</div>`;
+  msg.innerHTML = `<div class="tiny">処理中…</div>`;
 
   // 念のため「今ページ未送信」を送る（※runtime.idxは最後のページのままなので41〜50が拾える）
   await sendCurrentPageBatch_({ force:true, statusElId:"msg" });
@@ -1426,10 +1426,10 @@ async function saveMbtiAndGoHandoff(){
       });
 
       msg.innerHTML = r?.ok
-        ? `<div class="ok">MBTIも送信しました。</div>`
-        : `<div class="tiny">（MBTIの送信はローカル保存のみで継続）</div>`;
+        ? `<div class="ok">OK！</div>`
+        : `<div class="tiny">（通信が不安定な場合はローカル保存で継続します）</div>`;
     }catch(_){
-      msg.innerHTML = `<div class="tiny">（通信が不安定なのでMBTIはローカル保存のみ）</div>`;
+      msg.innerHTML = `<div class="tiny">（通信が不安定な場合はローカル保存で継続します）</div>`;
     }
   }else{
     msg.innerHTML = `<div class="tiny">MBTIは未選択のまま進みます。</div>`;
@@ -1460,7 +1460,7 @@ function renderHandoff(){
 
     <div class="hr"></div>
 
-    <div id="handoffMsg" class="tiny">送信状況を確認中…</div>
+    <div id="handoffMsg" class="tiny">準備中…</div>
 
     <div class="hr"></div>
 

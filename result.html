@@ -217,6 +217,13 @@
       <!-- メール送信ブロック -->
       <div>
         <p class="sectionTitle">この結果全文を、メールに送信します！</p>
+        <!-- 招待URL発行ブロック（メール欄の上） -->
+<div class="shotBox" style="margin-top:10px;">
+  <button class="btn" id="inviteBtn" onclick="issueInviteUrl()">招待URLを発行</button>
+  <div class="tiny">※氏名を入力すると、招待用URLがクリップボードにコピーされます。</div>
+  <div id="inviteMsg"></div>
+</div>
+
         <input class="field" id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="メールアドレスを入力">
         <div class="tiny">※メールアドレスは、結果のメール送信以外には使用しません。</div>
 
@@ -270,6 +277,111 @@
     if (!text){ el.innerHTML = ""; return; }
     el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
   }
+  /* 追加：招待URLメッセージ */
+function setInviteMsg(kind, text){
+  const el = document.getElementById("inviteMsg");
+  if (!el) return;
+  if (!text){ el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="${kind === 'err' ? 'err' : 'ok'}">${escapeHtml(text)}</div>`;
+}
+
+/* 追加：ランダム招待コード生成（短めで十分推測されにくい） */
+function makeInviteCode(){
+  // cryptoが使える環境なら強め、ダメならMath.randomでフォールバック
+  if (window.crypto && crypto.getRandomValues){
+    const bytes = new Uint8Array(12);
+    crypto.getRandomValues(bytes);
+    // URLに載せやすいbase36っぽい文字列へ
+    return Array.from(bytes, b => (b % 36).toString(36)).join("");
+  }
+  return (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).slice(0, 18);
+}
+
+/* 追加：招待URL発行（1セッション1回っぽく見せる） */
+async function issueInviteUrl(){
+  setInviteMsg("", "");
+
+  if (!sessionId){
+    setInviteMsg("err", "セッション情報(sid)が見つかりません。");
+    return;
+  }
+
+  const btn = document.getElementById("inviteBtn");
+  if (!btn) return;
+
+  // 発行済みチェック（厳密保証ではなく“見せ方”）
+  const issuedKey = "inviteIssued_" + String(sessionId);
+  const already = localStorage.getItem(issuedKey);
+  if (already){
+    btn.disabled = true;
+    btn.textContent = "発行済み";
+    setInviteMsg("ok", "このセッションでは招待URLは発行済みです。");
+    return;
+  }
+
+  // 氏名入力（キャンセルなら中断）
+  const inviterName = (window.prompt("氏名（フルネーム）を入力してください", "") || "").trim();
+  if (!inviterName){
+    setInviteMsg("err", "氏名が入力されなかったので中止しました。");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "発行中…";
+
+  try{
+    // 招待コード生成 & URL組み立て（同階層のindex.htmlへ）
+    const inviteCode = makeInviteCode();
+    const inviteUrl = new URL("index.html", location.href);
+    inviteUrl.searchParams.set("invite", inviteCode);
+
+    // クリップボードへコピー
+    // ※Safariなどで失敗する場合に備えてフォールバックも用意
+    try{
+      await navigator.clipboard.writeText(inviteUrl.toString());
+    }catch(_){
+      const ta = document.createElement("textarea");
+      ta.value = inviteUrl.toString();
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      if (!ok) throw new Error("clipboard copy failed");
+    }
+
+    // 発行済みとして保存（“見せ方”）
+    localStorage.setItem(issuedKey, "1");
+
+    // GASに記録（ログ用途）
+    // GAS側で action:"logInviteIssue" を受けて記録する実装が必要
+    try{
+      await postToGAS({
+        action: "logInviteIssue",
+        sessionId,
+        inviterName,
+        inviteCode,
+        inviteUrl: inviteUrl.toString(),
+      });
+    }catch(e){
+      // ここは失敗しても「コピー自体はできた」ので、UX的に致命傷にしない
+      console.warn("logInviteIssue failed:", e);
+    }
+
+    btn.textContent = "コピーしました";
+    btn.disabled = true;
+    setInviteMsg("ok", "招待URLをコピーしました。貼り付けて共有できます。");
+
+  }catch(e){
+    console.warn(e);
+    btn.disabled = false;
+    btn.textContent = "招待URLを発行";
+    setInviteMsg("err", "発行に失敗しました：" + (e && e.message ? e.message : "unknown error"));
+  }
+}
+
 
 async function postToGAS(payloadObj){
   const maxTry = 5;

@@ -1444,22 +1444,20 @@ function renderHandoff(){
   runtime.handoffTimer = null;
 
   $app.innerHTML = `
-    <div class="label">完了</div>
-    <p class="qtitle">おつかれさまでした！ご回答ありがとうございました！</p>
-
-    <div class="mutedBox tiny">
-      いま結果の準備をしています。少しだけお待ちください。<br/>
-      sessionId：<span class="mono">${escapeHTML(runtime.sid)}</span>
-    </div>
+    <p class="qtitle" style="text-align:center;">
+      おつかれさまでした！<br/>
+      ご回答ありがとうございました！
+    </p>
 
     <div class="hr"></div>
 
-    <div id="handoffMsg" class="tiny">準備中…</div>
+    <div id="handoffMsg" class="tiny" style="text-align:center;">準備中…</div>
 
     <div class="hr"></div>
 
     <button class="btn primary" id="go">次へ</button>
   `;
+
 
   document.getElementById("go").onclick = () => {
     // 手動でも次へ行けるが、未送信再送・シグナル送信は裏で続く

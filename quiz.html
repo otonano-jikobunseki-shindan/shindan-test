@@ -49,14 +49,15 @@
     padding:18px 14px 40px;
   }
 
-  .hero{
-    padding:18px 16px;
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    background:rgba(255,255,255,.78);
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(10px);
-  }
+.hero{
+  padding:18px 16px;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:rgba(255,255,255,.78);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  text-align:center;
+}
 
   h1{
     font-size:22px;
@@ -279,20 +280,17 @@
 <body>
   <div class="wrap">
     <div class="hero">
-      <h1>あなたの特性が笑っちゃうほどわかる！大人の診断テスト！</h1>
-      <p class="sub">5分以内で回答できる！現在、完全無料で診断できます。</p>
-      <p class="sub tiny">※このページはスマホ前提で作っていますが、PCでも表示可能です。</p>
+      <h1>あなたの特性が驚くほどわかる！<br/>大人の診断テスト！</h1>
+      <p class="sub">
+        無料招待URLへようこそ！<br/>
+        5分以内で回答できる50問で、診断してみましょう！<br/>
+        ※結果も無料のまま確認できます。
+      </p>
     </div>
 
     <div id="app" class="card"></div>
 
-    <div class="card">
-      <div class="label">デバッグ表示（必要なときだけ見る用）</div>
-      <div class="mutedBox tiny">
-        sessionId: <span id="dbgSid" class="mono"></span><br/>
-        step: <span id="dbgStep" class="mono"></span>
-      </div>
-    </div>
+
   </div>
 
 <script>
@@ -720,8 +718,9 @@ init();
    Render router
 ========================= */
 function render(){
-  $dbgSid.textContent = runtime.sid || "";
-  $dbgStep.textContent = runtime.step || "";
+  if ($dbgSid) $dbgSid.textContent = runtime.sid || "";
+  if ($dbgStep) $dbgStep.textContent = runtime.step || "";
+
 
   if (runtime.step === "landing") return renderLanding();
   if (runtime.step === "gender") return renderGender();
@@ -737,27 +736,21 @@ function renderLanding(){
   const hasProgress = !!(runtime.gender && (runtime.idx > 0 || Object.keys(runtime.answers||{}).length > 0));
 
   $app.innerHTML = `
-    <div class="label">まずはスタート</div>
-    <p class="sub">いくつかの質問に答えるだけで、あなたの傾向をスパッと整理します。</p>
-    <div class="hr"></div>
-
     ${hasProgress ? `
       <div class="mutedBox tiny" style="margin-bottom:10px;">
         途中保存データが見つかりました。続きから再開できます。
       </div>
-      <div class="row">
-        <button class="btn primary" id="btnResume">続きから再開</button>
-        <button class="btn danger" id="btnNewStart">最初から</button>
+      <div class="row" style="justify-content:center;">
+        <button class="btn primary" id="btnResume" style="flex:0; min-width:180px;">続きから再開</button>
+        <button class="btn danger" id="btnNewStart" style="flex:0; min-width:140px;">最初から</button>
       </div>
     ` : `
-      <button class="btn primary" id="btnStart">診断をはじめる</button>
+      <div class="row" style="justify-content:center;">
+        <button class="btn primary" id="btnStart" style="flex:0; width:240px;">診断をはじめる</button>
+      </div>
     `}
-
-    <p class="tiny" style="margin-top:10px;">
-      ※このページ（quiz.html）は「回答送信→次ページへ引き継ぎ」まで担当します。<br/>
-      ※結果の表示は次のページで行ってください。
-    </p>
   `;
+
 
   if (!hasProgress){
     document.getElementById("btnStart").onclick = () => setStep("gender");

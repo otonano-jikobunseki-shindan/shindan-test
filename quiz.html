@@ -1312,7 +1312,9 @@ function hardReset_(){
 function renderMbti(){
   $app.innerHTML = `
     <div class="label">MBTI（任意）</div>
-    <p class="qtitle">もし分かれば、MBTIを選んでください（未選択でもOK）。</p>
+    <p class="qtitle">
+  MBTIを選択してください。（分からなければ未選択OK！）
+</p>
 
     <div id="mbtiArea">
       <div class="tiny">候補を読み込み中…</div>
@@ -1327,10 +1329,6 @@ function renderMbti(){
 
     <div id="msg"></div>
 
-    <p class="tiny" style="margin-top:10px;">
-      ※プルダウン表示は「ENFP（運動家）」形式です。<br/>
-      ※選択すると MBTI1〜4（E/I, S/N, T/F, J/P）も一緒に保存・送信します。
-    </p>
   `;
 
   document.getElementById("btnBackToQuiz").onclick = () => {
@@ -1368,9 +1366,6 @@ function renderMbti(){
             </option>
           `).join("")}
         </select>
-        <div class="tiny" style="margin-top:10px;">
-          ※表示は「ENFP（運動家）」、送信は「MBTI=ENFP / MBTI1..4=E N F P」です。
-        </div>
       `;
     }catch(err){
       area.innerHTML = `<div class="err">MBTI候補の読込に失敗: ${escapeHTML(err.message)}</div>

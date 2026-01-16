@@ -887,7 +887,6 @@ function renderQuiz10(){
     <div class="row" style="justify-content:space-between;align-items:center;">
       <span class="pill">進捗 ${answeredCount} / ${qTotal}</span>
       <span class="pill">今 ${start+1}〜${end} 問目</span>
-      <span class="pill">性別: ${runtime.gender === "male" ? "男性" : "女性/その他"}</span>
     </div>
 
     <div class="progress" style="margin-top:10px;">
@@ -896,11 +895,6 @@ function renderQuiz10(){
 
     <div class="hr"></div>
 
-    <div class="mutedBox tiny">
-      このページは10問まとめて回答できます。<br/>
-      送信は「${escapeHTML(nextLabel)}」または「今すぐ送信」、もしくは「10秒停止」で途中送信が走ります。<br/>
-      ブラウザを閉じる場合も、未送信があれば自動送信（sendBeacon）します。
-    </div>
 
     <div id="qList">
       ${slice.map((q, i) => renderQBlock_(q, start, i)).join("")}
@@ -918,11 +912,6 @@ function renderQuiz10(){
     <div class="row" style="margin-top:10px;">
       <button class="btn danger" id="btnRestart">最初からやり直す</button>
     </div>
-
-    <p class="tiny" style="margin-top:10px;">
-      ※ボタンは、このページの全問が回答済みで押せます。<br/>
-      ※通信が不安定でもローカル保存は残ります。
-    </p>
 
     <div id="msg"></div>
   `;

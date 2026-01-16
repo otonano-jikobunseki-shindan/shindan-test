@@ -33,10 +33,11 @@
       color:var(--text);
     }
     .wrap{max-width:760px;margin:0 auto;padding:18px 14px 40px;}
-    .hero{
-      padding:18px 16px;border:1px solid var(--line);border-radius:var(--radius);
-      background:rgba(255,255,255,.78);box-shadow: var(--shadow);backdrop-filter: blur(10px);
-    }
+.hero{
+  padding:18px 16px;border:1px solid var(--line);border-radius:var(--radius);
+  background:rgba(255,255,255,.78);box-shadow: var(--shadow);backdrop-filter: blur(10px);
+  text-align:center;
+}
     h1{font-size:22px;margin:0 0 8px;letter-spacing:.2px;}
     .sub{color:var(--muted);line-height:1.7;margin:0;}
     .card{
@@ -167,7 +168,6 @@
   <div class="wrap">
     <div class="hero">
       <h1>診断結果</h1>
-      <p class="sub">あなたの結果を表示します。</p>
     </div>
 
     <div class="card" id="statusCard">
@@ -220,12 +220,8 @@
         <!-- 招待URL発行ブロック（メール欄の上） -->
 <div class="shotBox" style="margin-top:10px;">
   <button class="btn" id="inviteBtn" onclick="issueInviteUrl()">招待URLを発行</button>
-  <div class="tiny">※氏名を入力すると、招待用URLがクリップボードにコピーされます。</div>
   <div id="inviteMsg"></div>
 </div>
-
-        <input class="field" id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="メールアドレスを入力">
-        <div class="tiny">※メールアドレスは、結果のメール送信以外には使用しません。</div>
 
         <!-- 追加：ボタン（メール入力の下） -->
         <div class="shotBox" style="margin-top:10px;">
@@ -233,6 +229,9 @@
           <div class="tiny">※この部分から、性に関する回答内容が漏れる心配はありません。</div>
           <div id="shotMsgBottom"></div>
         </div>
+
+        <input class="field" id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="メールアドレスを入力">
+      <div class="tiny">※メールアドレスは、結果のメール送信以外には使用しません。</div>
 
         <button class="btn good" id="sendBtn" onclick="sendEmail()" style="margin-top:10px;">このアドレスに送信する</button>
         <div id="emailMsg"></div>

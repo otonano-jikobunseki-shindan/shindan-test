@@ -798,25 +798,22 @@ function renderLanding(){
 function renderGender(){
   $app.innerHTML = `
     <div class="label">質問 0 / 性別</div>
-    <p class="qtitle">あなたはどれですか？</p>
+    <p class="qtitle">あなたの性別は？</p>
     <div class="row">
       <button class="btn" id="gMale">男性</button>
       <button class="btn" id="gFemale">女性</button>
       <button class="btn" id="gOther">その他</button>
     </div>
     <p class="tiny" style="margin-top:10px;">
-      ※「その他」は女性と同じ質問に進みます。<br/>
-      ※それ以外の目的で性別を使用しません。
+      ※質問項目の調整、内部点数の調整以外で性別を使用しません。
     </p>
-    <div class="hr"></div>
-    <button class="btn ghost" id="back">戻る</button>
   `;
 
   document.getElementById("gMale").onclick = () => startQuizWithGender("male");
   document.getElementById("gFemale").onclick = () => startQuizWithGender("female");
   document.getElementById("gOther").onclick = () => startQuizWithGender("female");
-  document.getElementById("back").onclick = () => setStep("landing");
 }
+
 
 async function startQuizWithGender(gender){
   runtime.gender = gender;

@@ -219,7 +219,6 @@
 
       <p class="text" id="topText"></p>
 
-      <p class="text" id="topText"></p>
 
 <!-- ===== 合言葉UI（モザイクの外：押せる状態） ===== -->
 <div id="unlockBox" style="padding:12px;margin-bottom:12px;border:1px dashed #f3d2c2;border-radius:14px;background:rgba(255,255,255,.85);">
@@ -458,24 +457,62 @@ const VALID_KEYS = [
   "dioap90h6",
   "ko99j7ftny"
 ];
-  function generateKey(){
-
-  if (!sessionId){
-    document.getElementById("unlockMsg").innerHTML =
-      '<div class="err">セッション情報(sid)が見つかりません。</div>';
-    return;
-  }
-
-  const key = VALID_KEYS[Math.floor(Math.random()*VALID_KEYS.length)];
+  /* ===== REPLACE START: generateKey() ===== */
+async function generateKey(){
+  const msg = document.getElementById("unlockMsg");
+  if (msg) msg.innerHTML = "合言葉を発行中…";
 
   try{
-    navigator.clipboard.writeText(key);
-  }catch(e){}
+    // sessionId は既存ロジックで生成済みの前提（このファイル内のグローバル）
+    if (!sessionId) throw new Error("sessionId がありません");
 
-  document.getElementById("unlockMsg").innerHTML =
-    '<div class="ok">合言葉をコピーしました。Instagram DMに貼り付けて送ってください。</div>';
+    const r = await postToGAS({
+      action: "issueKey",
+      sessionId
+    });
+
+    if (!r || !r.ok) {
+      throw new Error((r && (r.error || r.message)) ? (r.error || r.message) : "issueKey failed");
+    }
+
+    const key = String(r.key || "").trim();
+    const keyTime = String(r.keyTime || "").trim();
+
+    // 表示（No.13：レスポンスに keyTime が含まれることを確認しやすくする）
+    if (msg){
+      msg.innerHTML =
+        `合言葉を発行しました：<b>${escapeHtml_(key)}</b>` +
+        (keyTime ? `<div class="tiny">発行時刻: ${escapeHtml_(keyTime)}</div>` : "");
+    }
+
+    // 入力欄にも入れておく（手動テストしやすい）
+    const input = document.getElementById("unlockInput");
+    if (input) input.value = key;
+
+    // デバッグ用（任意）
+    window.__issuedKey = key;
+    window.__issuedKeyTime = keyTime;
+
+    return key;
+
+  }catch(e){
+    console.error(e);
+    if (msg) msg.innerHTML = "合言葉の発行に失敗しました。もう一度お試しください。";
+    return null;
+  }
 }
+/* ===== REPLACE END: generateKey() ===== */
 
+// HTMLエスケープ（XSS対策の最低限）
+function escapeHtml_(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#39;");
+}
+/* ===== /REPLACE END: generateKey() ===== */
 
 function tryUnlock(){
 

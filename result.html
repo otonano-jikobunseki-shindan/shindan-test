@@ -160,6 +160,17 @@
     @keyframes spin{to{transform: rotate(360deg)}}
 
     /* 追加：スクショ（画像保存）ボタン周り */
+        /* ===== 追加：モザイク（トップ文章より下をぼかす） ===== */
+    #mosaicArea{
+      position: relative;
+    }
+    #mosaicArea.isMosaic{
+      filter: blur(10px);
+      opacity: .9;
+      pointer-events: none; /* ぼかし中は操作できない（解除後に操作OK） */
+      user-select: none;
+    }
+
     .shotBox{margin-top:10px;}
   </style>
 </head>
@@ -208,34 +219,54 @@
 
       <p class="text" id="topText"></p>
 
-      <div class="hr"></div>
+      <p class="text" id="topText"></p>
 
-      <div id="sections"></div>
+<!-- ===== 合言葉UI（モザイクの外：押せる状態） ===== -->
+<div id="unlockBox" style="padding:12px;margin-bottom:12px;border:1px dashed #f3d2c2;border-radius:14px;background:rgba(255,255,255,.85);">
+  <p class="sectionTitle">合言葉を入力してください</p>
+  <input class="field" id="unlockInput" placeholder="合言葉を入力">
+  <button class="btn" style="margin-top:8px;" onclick="tryUnlock()">合言葉で解除</button>
+  <div class="tiny">※Instagram DMで受け取った合言葉を入力してください</div>
+  <div id="unlockMsg"></div>
+  <button class="btn" style="margin-top:10px;" onclick="generateKey()">
+  初めての表示はこちら（合言葉を発行）
+</button>
 
-      <div class="hr"></div>
-
-      <!-- メール送信ブロック -->
-      <div>
-        <p class="sectionTitle">この結果全文を、メールに送信します！</p>
-        <!-- 招待URL発行ブロック（メール欄の上） -->
-<div class="shotBox" style="margin-top:10px;">
-  <button class="btn" id="inviteBtn" onclick="issueInviteUrl()">招待URLを発行</button>
-  <div id="inviteMsg"></div>
+<div class="tiny">※このボタンは最初の1回だけ使います</div>
 </div>
 
-        <!-- 追加：ボタン（メール入力の下） -->
-        <div class="shotBox" style="margin-top:10px;">
-          <button class="btn" id="shotBtnBottom" onclick="saveShareTopImage('bottom')">結果の部分だけを保存する</button>
-          <div class="tiny">※この部分から、性に関する回答内容が漏れる心配はありません。</div>
-          <div id="shotMsgBottom"></div>
-        </div>
+<!-- ===== ここから下だけモザイク（押せないのはここでOK） ===== -->
+<div id="mosaicArea" class="isMosaic">
+  <div class="hr"></div>
 
-        <input class="field" id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="メールアドレスを入力">
-      <div class="tiny">※メールアドレスは、結果のメール送信以外には使用しません。</div>
+  <div id="sections"></div>
 
-        <button class="btn good" id="sendBtn" onclick="sendEmail()" style="margin-top:10px;">このアドレスに送信する</button>
-        <div id="emailMsg"></div>
-      </div>
+  <div class="hr"></div>
+
+  <!-- メール送信ブロック -->
+  <div>
+    <p class="sectionTitle">この結果全文を、メールに送信します！</p>
+
+    <div class="shotBox" style="margin-top:10px;">
+      <button class="btn" id="inviteBtn" onclick="issueInviteUrl()">招待URLを発行</button>
+      <div id="inviteMsg"></div>
+    </div>
+
+    <div class="shotBox" style="margin-top:10px;">
+      <button class="btn" id="shotBtnBottom" onclick="saveShareTopImage('bottom')">結果の部分だけを保存する</button>
+      <div class="tiny">※この部分から、性に関する回答内容が漏れる心配はありません。</div>
+      <div id="shotMsgBottom"></div>
+    </div>
+
+    <input class="field" id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="メールアドレスを入力">
+    <div class="tiny">※メールアドレスは、結果のメール送信以外には使用しません。</div>
+
+    <button class="btn good" id="sendBtn" onclick="sendEmail()" style="margin-top:10px;">このアドレスに送信する</button>
+    <div id="emailMsg"></div>
+  </div>
+</div>
+
+
     </div>
   </div>
 
@@ -309,7 +340,7 @@ async function issueInviteUrl(){
   if (!btn) return;
 
   // 発行済みチェック（厳密保証ではなく“見せ方”）
-  const issuedKey = "inviteIssued_" + String(sessionId);
+  const issuedKey = "inviteIssued_" + String(sessionId || "");
   const already = localStorage.getItem(issuedKey);
   if (already){
     btn.disabled = true;
@@ -422,6 +453,80 @@ async function postToGAS(payloadObj){
   function showRetry(on){
     document.getElementById("retryBox").style.display = on ? "block" : "none";
   }
+    // 追加：モザイクON/OFF（No.4はONにするだけ）
+  function setMosaic(on){
+    const area = document.getElementById("mosaicArea");
+    if (!area) return;
+    if (on) area.classList.add("isMosaic");
+    else area.classList.remove("isMosaic");
+  }
+    // No.5 ダミー解除（まだ判定しない）
+  function normalizeKey(s){
+  return String(s || "")
+    .toLowerCase()
+    .replace(/\s+/g, ""); // 空白・改行すべて除去
+}
+
+const VALID_KEYS = [
+  "j9aovb64",
+  "dioap90h6",
+  "ko99j7ftny"
+];
+  function generateKey(){
+
+  if (!sessionId){
+    document.getElementById("unlockMsg").innerHTML =
+      '<div class="err">セッション情報(sid)が見つかりません。</div>';
+    return;
+  }
+
+  const key = VALID_KEYS[Math.floor(Math.random()*VALID_KEYS.length)];
+
+  try{
+    navigator.clipboard.writeText(key);
+  }catch(e){}
+
+  document.getElementById("unlockMsg").innerHTML =
+    '<div class="ok">合言葉をコピーしました。Instagram DMに貼り付けて送ってください。</div>';
+}
+
+
+function tryUnlock(){
+
+  
+  // ★ここに入れる（一番上）
+  if (!sessionId){
+    document.getElementById("unlockMsg").innerHTML =
+      '<div class="err">セッション情報(sid)が見つかりません。</div>';
+    return;
+  }
+  
+  const raw = document.getElementById("unlockInput").value || "";
+  const key = normalizeKey(raw);
+
+  const ok = VALID_KEYS.includes(key);
+
+  if (!ok){
+    document.getElementById("unlockMsg").innerHTML =
+      '<div class="err">合言葉が違います。</div>';
+    return;
+  }
+
+  // 成功：モザイク解除
+  setMosaic(false);
+
+  // 永続保存（この端末だけ）
+  try{
+    localStorage.setItem("unlocked_result_" + String(sessionId || ""), "1");
+  }catch(e){}
+
+// UI非表示（成功メッセージ不要）
+const box = document.getElementById("unlockBox");
+if (box) box.style.display = "none";
+}
+
+
+
 
   function renderSections(result){
     const container = document.getElementById("sections");
@@ -737,10 +842,22 @@ for (let i=0;i<lines.length;i++){
       setIllustrationByNo(r.illusNo);
 
       renderSections(r);
+            setMosaic(true);
+
 
       document.getElementById("statusCard").style.display = "none";
       document.getElementById("resultCard").style.display = "block";
       showLoading(false);
+      // No.7：保存済みなら自動解除
+try{
+  const key = "unlocked_result_" + String(sessionId || "");
+if (localStorage.getItem(key) === "1"){
+    setMosaic(false);
+    const box = document.getElementById("unlockBox");
+    if (box) box.style.display = "none";
+  }
+}catch(e){}
+
 
     }catch(e){
       console.warn(e);
@@ -808,6 +925,7 @@ for (let i=0;i<lines.length;i++){
       setEmailMsg("err", "通信エラーが発生しました。ネット環境を変えて再試行してください。");
     }
   }
+
 
   // 起動
   loadResult();

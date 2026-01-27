@@ -385,20 +385,6 @@ async function issueInviteUrl(){
     // 発行済みとして保存（“見せ方”）
     localStorage.setItem(issuedKey, "1");
 
-    // GASに記録（ログ用途）
-    // GAS側で action:"logInviteIssue" を受けて記録する実装が必要
-    try{
-      await postToGAS({
-        action: "logInviteIssue",
-        sessionId,
-        inviterName,
-        inviteCode,
-        inviteUrl: inviteUrl.toString(),
-      });
-    }catch(e){
-      // ここは失敗しても「コピー自体はできた」ので、UX的に致命傷にしない
-      console.warn("logInviteIssue failed:", e);
-    }
 
     btn.textContent = "コピーしました";
     btn.disabled = true;

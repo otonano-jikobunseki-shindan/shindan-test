@@ -227,7 +227,7 @@
   <button class="btn" style="margin-top:8px;" onclick="tryUnlock()">合言葉で解除</button>
   <div class="tiny">※Instagram DMで受け取った合言葉を入力してください</div>
   <div id="unlockMsg"></div>
-  <button class="btn" style="margin-top:10px;" onclick="generateKey()">
+  <button class="btn" id="genKeyBtn" style="margin-top:10px;" onclick="generateKey()">
   初めての表示はこちら（合言葉を発行）
 </button>
 
@@ -235,7 +235,7 @@
 </div>
 
 <!-- ===== ここから下だけモザイク（押せないのはここでOK） ===== -->
-<div id="mosaicArea" class="isMosaic">
+<div id="mosaicArea">
   <div class="hr"></div>
 
   <div id="sections"></div>
@@ -381,6 +381,14 @@ async function issueInviteUrl(){
       if (!ok) throw new Error("clipboard copy failed");
     }
 
+    await postToGAS({
+  action: "logInvite",
+  sessionId,
+  inviterName,
+  inviteCode,
+  inviteUrl: inviteUrl.toString()
+});
+
     // 発行済みとして保存（“見せ方”）
     localStorage.setItem(issuedKey, "1");
 
@@ -457,50 +465,126 @@ const VALID_KEYS = [
   "dioap90h6",
   "ko99j7ftny"
 ];
+  let issueKeyInFlight = false;
+
+function openInstagramDM(igHandle, dmText){
+  const shareUrl =
+    "https://www.instagram.com/direct/new/?" +
+    "text=" + encodeURIComponent(dmText) +
+    "&username=" + encodeURIComponent(igHandle);
+
+  let opened = false;
+  try{
+    const w = window.open(shareUrl, "_blank");
+    opened = !!w;
+  }catch(e){
+    opened = false;
+  }
+
+  setTimeout(() => {
+    if (opened) return;
+    try{
+      window.open(`https://www.instagram.com/direct/t/${igHandle}/`, "_blank");
+    }catch(_){}
+  }, 800);
+}
+
+async function copyToClipboard(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    return true;
+  }catch(_){
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  }
+}
+
   /* ===== REPLACE START: generateKey() ===== */
 async function generateKey(){
   const msg = document.getElementById("unlockMsg");
+  const btn = document.getElementById("genKeyBtn");
+
+  // 連打ガード
+  if (issueKeyInFlight) return;
+  issueKeyInFlight = true;
+
+  if (btn){
+    btn.disabled = true;
+    btn.textContent = "発行中…";
+  }
   if (msg) msg.innerHTML = "合言葉を発行中…";
 
   try{
-    // sessionId は既存ロジックで生成済みの前提（このファイル内のグローバル）
     if (!sessionId) throw new Error("sessionId がありません");
 
-    const r = await postToGAS({
-      action: "issueKey",
-      sessionId
-    });
+    const igHandle = "otona.shindan.321";
+    const storedKeyK = "issued_key_" + String(sessionId || "");
+    const storedTimeK = "issued_keyTime_" + String(sessionId || "");
 
-    if (!r || !r.ok) {
-      throw new Error((r && (r.error || r.message)) ? (r.error || r.message) : "issueKey failed");
+    // 端末内に既発行があればそれを再利用（連打・再読み込み耐性）
+    let key = "";
+    let keyTime = "";
+    try{
+      key = (localStorage.getItem(storedKeyK) || "").trim();
+      keyTime = (localStorage.getItem(storedTimeK) || "").trim();
+    }catch(e){}
+
+    // 無ければGASに発行依頼
+    if (!key){
+      const r = await postToGAS({ action: "issueKey", sessionId });
+      if (!r || !r.ok){
+        throw new Error((r && (r.error || r.message)) ? (r.error || r.message) : "issueKey failed");
+      }
+      key = String(r.key || "").trim();
+      keyTime = String(r.keyTime || "").trim();
+
+      try{
+        localStorage.setItem(storedKeyK, key);
+        if (keyTime) localStorage.setItem(storedTimeK, keyTime);
+      }catch(e){}
     }
 
-    const key = String(r.key || "").trim();
-    const keyTime = String(r.keyTime || "").trim();
+    const dmText = `【${key}】この文章をそのまま送ってください✨`;
 
-    // 表示（No.13：レスポンスに keyTime が含まれることを確認しやすくする）
+    // コピー（失敗してもフォールバックあり）
+    await copyToClipboard(dmText);
+
+    // DM画面を開く（本文入りを試す→ダメなら通常DM）
+    openInstagramDM(igHandle, dmText);
+
+    // 表示
     if (msg){
       msg.innerHTML =
         `合言葉を発行しました：<b>${escapeHtml_(key)}</b>` +
-        (keyTime ? `<div class="tiny">発行時刻: ${escapeHtml_(keyTime)}</div>` : "");
+        (keyTime ? `<div class="tiny">発行時刻: ${escapeHtml_(keyTime)}</div>` : "") +
+        `<div class="tiny">本文はコピー済みです。DMに貼り付けて送ってください。</div>`;
     }
 
-    // 入力欄にも入れておく（手動テストしやすい）
+    // 入力欄にも入れておく（テストしやすい）
     const input = document.getElementById("unlockInput");
     if (input) input.value = key;
-
-    // デバッグ用（任意）
-    window.__issuedKey = key;
-    window.__issuedKeyTime = keyTime;
-
-    return key;
 
   }catch(e){
     console.error(e);
     if (msg) msg.innerHTML = "合言葉の発行に失敗しました。もう一度お試しください。";
-    return null;
+
+  }finally{
+    issueKeyInFlight = false;
+    if (btn){
+      btn.disabled = false;
+      btn.textContent = "初めての表示はこちら（合言葉を発行）";
+    }
   }
 }
+
 /* ===== REPLACE END: generateKey() ===== */
 
 // HTMLエスケープ（XSS対策の最低限）
@@ -536,6 +620,15 @@ function tryUnlock(){
   }
 
   // 成功：モザイク解除
+  // ★No.22 保険：CSSクラスだけじゃなくstyleでも強制解除
+const area = document.getElementById("mosaicArea");
+if (area){
+  area.classList.remove("isMosaic");
+  area.style.filter = "none";
+  area.style.opacity = "1";
+  area.style.pointerEvents = "auto";
+}
+
   setMosaic(false);
 
   // 永続保存（この端末だけ）
@@ -949,6 +1042,15 @@ if (localStorage.getItem(key) === "1"){
     }
   }
 
+
+
+  // ===== No.21 保険：sendEmail が未定義ならエラー表示だけ出す =====
+if (typeof window.sendEmail !== "function"){
+  window.sendEmail = function(){
+    const el = document.getElementById("emailMsg");
+    if (el) el.innerHTML = '<div class="err">送信機能の読み込みに失敗しました（JSエラーの可能性）。</div>';
+  };
+}
 
   // 起動
   loadResult();

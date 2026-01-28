@@ -382,7 +382,7 @@ async function issueInviteUrl(){
     }
 
     await postToGAS({
-  action: "logInvite",
+  action: "logInviteIssue",
   sessionId,
   inviterName,
   inviteCode,
@@ -560,17 +560,16 @@ async function generateKey(){
     // DM画面を開く（本文入りを試す→ダメなら通常DM）
     openInstagramDM(igHandle, dmText);
 
-    // 表示
-    if (msg){
-      msg.innerHTML =
-        `合言葉を発行しました：<b>${escapeHtml_(key)}</b>` +
-        (keyTime ? `<div class="tiny">発行時刻: ${escapeHtml_(keyTime)}</div>` : "") +
-        `<div class="tiny">本文はコピー済みです。DMに貼り付けて送ってください。</div>`;
-    }
+    // 表示（KeyはDM送信用。解除用ではない）
+if (msg){
+  msg.innerHTML =
+    `DMに送る文章をコピーしました。Instagramに貼り付けて送信してください。` +
+    (keyTime ? `<div class="tiny">（ログ用）発行時刻: ${escapeHtml_(keyTime)}</div>` : "");
+}
 
-    // 入力欄にも入れておく（テストしやすい）
-    const input = document.getElementById("unlockInput");
-    if (input) input.value = key;
+    // ★解除用入力欄は空にする（ここに入れるのはインスタの自動返信キー）
+const input = document.getElementById("unlockInput");
+if (input) input.value = "";
 
   }catch(e){
     console.error(e);

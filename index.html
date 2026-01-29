@@ -139,6 +139,72 @@
     .msg{font-size:14px;}
     .btn{font-size:15.5px;}
   }
+    /* ===== 流れる帯（上・下） ===== */
+.marquee{
+  width:min(560px,100%);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  filter: drop-shadow(0 8px 18px rgba(20,10,5,.06));
+  margin: 10px auto;
+}
+
+/* 透明感のある背景（カードの世界観に合わせる） */
+.marquee::before{
+  content:"";
+  position:absolute; inset:0;
+  background: rgba(255,255,255,.45);
+  border:1px solid var(--line);
+  border-radius: var(--radius);
+  z-index:0;
+}
+
+/* 端がスッと消えるフェード */
+.marquee::after{
+  content:"";
+  position:absolute; inset:0;
+  border-radius: var(--radius);
+  z-index:2;
+  pointer-events:none;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,.95) 0%,
+    rgba(255,255,255,0) 12%,
+    rgba(255,255,255,0) 88%,
+    rgba(255,255,255,.95) 100%
+  );
+}
+
+.marqueeTrack{
+  position: relative;
+  z-index:1;
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:10px 12px;
+  width:max-content;
+  animation: marqueeLeft var(--speed, 45s) linear infinite;
+}
+
+.marquee img{
+  height:44px;           /* 好みで調整 */
+  width:auto;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid rgba(241,215,200,.9);
+  box-shadow: 0 6px 12px rgba(20,10,5,.06);
+}
+
+/* 右→左に流す */
+@keyframes marqueeLeft{
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* スマホは少し小さく */
+@media (max-width:420px){
+  .marquee img{ height:38px; }
+}
+
 </style>
 
 
@@ -239,6 +305,23 @@
 </script>
 
 <div class="wrap">
+  
+  <!-- 上：1.png～20.png（右→左） -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marqueeTrack" style="--speed:55s">
+      <!-- 1周目 -->
+      <img src="1.png" alt=""><img src="2.png" alt=""><img src="3.png" alt=""><img src="4.png" alt=""><img src="5.png" alt="">
+      <img src="6.png" alt=""><img src="7.png" alt=""><img src="8.png" alt=""><img src="9.png" alt=""><img src="10.png" alt="">
+      <img src="11.png" alt=""><img src="12.png" alt=""><img src="13.png" alt=""><img src="14.png" alt=""><img src="15.png" alt="">
+      <img src="16.png" alt=""><img src="17.png" alt=""><img src="18.png" alt=""><img src="19.png" alt=""><img src="20.png" alt="">
+      <!-- 2周目（同じ並びをもう1回） -->
+      <img src="1.png" alt=""><img src="2.png" alt=""><img src="3.png" alt=""><img src="4.png" alt=""><img src="5.png" alt="">
+      <img src="6.png" alt=""><img src="7.png" alt=""><img src="8.png" alt=""><img src="9.png" alt=""><img src="10.png" alt="">
+      <img src="11.png" alt=""><img src="12.png" alt=""><img src="13.png" alt=""><img src="14.png" alt=""><img src="15.png" alt="">
+      <img src="16.png" alt=""><img src="17.png" alt=""><img src="18.png" alt=""><img src="19.png" alt=""><img src="20.png" alt="">
+    </div>
+  </div>
+
   <div class="card">
     <div class="title">
       <div class="badge">🌞</div>
@@ -260,6 +343,22 @@
     <button class="btn btnSub" onclick="__APP__.copyLink()">
       リンクをコピー
     </button>
+  </div>
+  
+  <!-- 下：21.png～40.png（右→左） -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marqueeTrack" style="--speed:65s">
+      <!-- 1周目 -->
+      <img src="21.png" alt=""><img src="22.png" alt=""><img src="23.png" alt=""><img src="24.png" alt=""><img src="25.png" alt="">
+      <img src="26.png" alt=""><img src="27.png" alt=""><img src="28.png" alt=""><img src="29.png" alt=""><img src="30.png" alt="">
+      <img src="31.png" alt=""><img src="32.png" alt=""><img src="33.png" alt=""><img src="34.png" alt=""><img src="35.png" alt="">
+      <img src="36.png" alt=""><img src="37.png" alt=""><img src="38.png" alt=""><img src="39.png" alt=""><img src="40.png" alt="">
+      <!-- 2周目 -->
+      <img src="21.png" alt=""><img src="22.png" alt=""><img src="23.png" alt=""><img src="24.png" alt=""><img src="25.png" alt="">
+      <img src="26.png" alt=""><img src="27.png" alt=""><img src="28.png" alt=""><img src="29.png" alt=""><img src="30.png" alt="">
+      <img src="31.png" alt=""><img src="32.png" alt=""><img src="33.png" alt=""><img src="34.png" alt=""><img src="35.png" alt="">
+      <img src="36.png" alt=""><img src="37.png" alt=""><img src="38.png" alt=""><img src="39.png" alt=""><img src="40.png" alt="">
+    </div>
   </div>
 </div>
 

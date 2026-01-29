@@ -1382,11 +1382,11 @@ function renderMbti(){
 ========================= */
 async function saveMbtiAndGoHandoff(){
 
-  // ★先にMBTI選択値を確保（画面切替すると要素が消えるため）
+  // ★1) 先にMBTIを確保（sendingにするとDOMから消える）
   const sel = document.getElementById("mbtiSelect");
   const type = sel ? normalizeMbtiType(sel.value) : "";
 
-  // ★その後に送信中画面へ
+  // ★2) それから送信中画面へ
   setStep("sending");
   touchActivity_();
   setTimeout(scrollToPageTop_, 0);

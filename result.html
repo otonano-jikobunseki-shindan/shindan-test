@@ -172,6 +172,59 @@
     }
 
     .shotBox{margin-top:10px;}
+    /* ===== DM遷移前ポップアップ ===== */
+.dmPopupOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 18px;
+}
+.dmPopupOverlay.isOpen{ display:flex; }
+
+.dmPopupCard{
+  width: min(420px, 92vw);
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(0,0,0,.18);
+  padding: 16px 16px 14px;
+  color: #2b2b2b;
+}
+.dmPopupTitle{
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+.dmPopupText{
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 12px;
+  white-space: pre-line; /* 改行を効かせる */
+}
+.dmPopupActions{
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.dmPopupBtn{
+  border: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.dmPopupBtn.primary{
+  background: #ff7a59;
+  color: #fff;
+}
+.dmPopupBtn.ghost{
+  background: #f3f4f6;
+  color: #374151;
+}
+
   </style>
 </head>
 
@@ -514,6 +567,45 @@ async function copyToClipboard(text){
   }
 }
 
+  /* ===== DM遷移前ポップアップ ===== */
+function showDmPopup(message, onGo){
+  const overlay = document.getElementById("dmPopup");
+  const textEl = document.getElementById("dmPopupText");
+  const btnGo = document.getElementById("dmPopupGo");
+  const btnCancel = document.getElementById("dmPopupCancel");
+  if (!overlay || !textEl || !btnGo || !btnCancel){
+    // もしDOMが無い場合はそのまま遷移（保険）
+    try{ onGo && onGo(); }catch(_){}
+    return;
+  }
+
+  textEl.textContent = message;
+
+  const close = () => {
+    overlay.classList.remove("isOpen");
+    overlay.setAttribute("aria-hidden","true");
+    btnGo.onclick = null;
+    btnCancel.onclick = null;
+    // 背景スクロール戻す
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+  };
+
+  btnCancel.onclick = () => close();
+  btnGo.onclick = () => {
+    close();
+    try{ onGo && onGo(); }catch(_){}
+  };
+
+  // 背景スクロール止める（威圧感は出さず、誤タップ防止）
+  document.documentElement.style.overflow = "hidden";
+  document.body.style.overflow = "hidden";
+
+  overlay.classList.add("isOpen");
+  overlay.setAttribute("aria-hidden","false");
+}
+
+  
   /* ===== REPLACE START: generateKey() ===== */
 async function generateKey(){
   const msg = document.getElementById("unlockMsg");
@@ -565,7 +657,11 @@ async function generateKey(){
     await copyToClipboard(dmText);
 
     // DM画面を開く（本文入りを試す→ダメなら通常DM）
-    openInstagramDM(igHandle, dmText);
+    showDmPopup(
+  "そのまま貼り付けして送信してください✨\n自動返信で、合言葉が返ってきます！",
+  () => openInstagramDM(igHandle, dmText)
+);
+
 
     // 表示（KeyはDM送信用。解除用ではない）
 if (msg){
@@ -1060,5 +1156,17 @@ if (typeof window.sendEmail !== "function"){
   // 起動
   loadResult();
 </script>
+  <!-- ===== DM遷移前ポップアップ ===== -->
+<div id="dmPopup" class="dmPopupOverlay" aria-hidden="true">
+  <div class="dmPopupCard" role="dialog" aria-modal="true" aria-labelledby="dmPopupTitle">
+    <p id="dmPopupTitle" class="dmPopupTitle">Instagramへ移動します</p>
+    <p id="dmPopupText" class="dmPopupText"></p>
+    <div class="dmPopupActions">
+      <button id="dmPopupCancel" class="dmPopupBtn ghost" type="button">あとで</button>
+      <button id="dmPopupGo" class="dmPopupBtn primary" type="button">OK✨</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

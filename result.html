@@ -231,7 +231,6 @@
   初めての表示はこちら（合言葉を発行）
 </button>
 
-<div class="tiny">※このボタンは最初の1回だけ使います</div>
 </div>
 
 <!-- ===== ここから下だけモザイク（押せないのはここでOK） ===== -->
@@ -244,7 +243,6 @@
 
   <!-- メール送信ブロック -->
   <div>
-    <p class="sectionTitle">この結果全文を、メールに送信します！</p>
 
     <div class="shotBox" style="margin-top:10px;">
       <button class="btn" id="inviteBtn" onclick="issueInviteUrl()">招待URLを発行</button>
@@ -256,6 +254,8 @@
       <div class="tiny">※この部分から、性に関する回答内容が漏れる心配はありません。</div>
       <div id="shotMsgBottom"></div>
     </div>
+    
+        <p class="sectionTitle">この結果全文を、メールに送信します！</p>
 
     <input class="field" id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="メールアドレスを入力">
     <div class="tiny">※メールアドレスは、結果のメール送信以外には使用しません。</div>
@@ -467,27 +467,26 @@ const VALID_KEYS = [
 ];
   let issueKeyInFlight = false;
 
-function openInstagramDM(igHandle, dmText){
-  const shareUrl =
-    "https://www.instagram.com/direct/new/?" +
-    "text=" + encodeURIComponent(dmText) +
-    "&username=" + encodeURIComponent(igHandle);
+  function openInstagramDM(igHandle, dmText){
+  // いちばん「宛先選択」を避けやすい：ig.me
+  const igMeUrl =
+    `https://ig.me/m/${encodeURIComponent(igHandle)}?text=${encodeURIComponent(dmText)}`;
 
-  let opened = false;
+  // フォールバック：プロフィールに飛ばす（DMはユーザー操作になるが、宛先ズレは起きない）
+  const webProfileUrl =
+    `https://www.instagram.com/${encodeURIComponent(igHandle)}/`;
+
   try{
-    const w = window.open(shareUrl, "_blank");
-    opened = !!w;
-  }catch(e){
-    opened = false;
-  }
+    // まず ig.me を開く
+    window.location.href = igMeUrl;
 
-  setTimeout(() => {
-    if (opened) return;
-    try{
-      window.open(`https://www.instagram.com/direct/t/${igHandle}/`, "_blank");
-    }catch(_){}
-  }, 800);
+    // もし遷移できない環境の保険（ブラウザによってはブロックされる）
+    setTimeout(()=>{ window.location.href = webProfileUrl; }, 900);
+  }catch(_){
+    window.location.href = webProfileUrl;
+  }
 }
+
 
 async function copyToClipboard(text){
   try{
@@ -552,7 +551,7 @@ async function generateKey(){
       }catch(e){}
     }
 
-    const dmText = `【${key}】この文章をそのまま送ってください✨`;
+    const dmText = `${key} この文章をそのまま送ってください✨`;
 
     // コピー（失敗してもフォールバックあり）
     await copyToClipboard(dmText);
@@ -563,8 +562,7 @@ async function generateKey(){
     // 表示（KeyはDM送信用。解除用ではない）
 if (msg){
   msg.innerHTML =
-    `DMに送る文章をコピーしました。Instagramに貼り付けて送信してください。` +
-    (keyTime ? `<div class="tiny">（ログ用）発行時刻: ${escapeHtml_(keyTime)}</div>` : "");
+    `DMに送る文章をコピーしました。Instagramに貼り付けて送信してください。`;
 }
 
     // ★解除用入力欄は空にする（ここに入れるのはインスタの自動返信キー）

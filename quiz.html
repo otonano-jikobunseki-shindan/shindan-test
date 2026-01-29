@@ -1394,9 +1394,6 @@ async function saveMbtiAndGoHandoff(){
   // 念のため「今ページ未送信」を送る（※runtime.idxは最後のページのままなので41〜50が拾える）
   await sendCurrentPageBatch_({ force:true });
 
-  const sel = document.getElementById("mbtiSelect");
-  const type = sel ? normalizeMbtiType(sel.value) : "";
-
   if (type){
     const found = (runtime.mbtiOptions || []).find(o => o.type === type);
     const axes = found ? {

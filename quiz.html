@@ -651,7 +651,12 @@ function touchActivity_(){
 
   runtime.idleTimer = setTimeout(async () => {
     try{
-      if (!prevPageFullySent_()) return;
+      // 変更前
+if (!prevPageFullySent_()) return;
+
+// 変更後（Q11以降だけ前ページチェックする）
+if (runtime.idx >= PAGE_SIZE && !prevPageFullySent_()) return;
+
 
       const targets = currentPageTargets_();
       if (targets.length === 0) return;

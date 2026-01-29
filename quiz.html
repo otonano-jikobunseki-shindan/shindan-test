@@ -827,6 +827,8 @@ async function startQuizWithGender(gender){
 
   runtime.sid = newSessionId();
   saveLS();
+  sendGenderNow_(); // ★性別確定時点でGASへ送る（失敗しても続行）
+
 
   try{
     runtime.questions = await loadTSV(gender === "male" ? TSV_PATH.male : TSV_PATH.female);
@@ -1078,6 +1080,24 @@ function onAnswer_(qid, opt){
   saveLS();
   render();
   touchActivity_();
+}
+
+
+  // ★性別選択直後に sessionId + gender を先にGASへ送る（失敗しても診断は続行）
+async function sendGenderNow_(){
+  try{
+    if (!runtime?.sid) return;
+    if (!runtime?.gender) return;
+
+    await postGAS({
+      action: "saveGender",
+      sessionId: runtime.sid,
+      gender: runtime.gender,
+      answeredAt: nowISO()
+    });
+  }catch(_){
+    // 失敗してもUI/進行は止めない（ここ重要）
+  }
 }
 
 /* =========================

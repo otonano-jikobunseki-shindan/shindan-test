@@ -726,6 +726,7 @@ function render(){
   if (runtime.step === "gender") return renderGender();
   if (runtime.step === "quiz") return renderQuiz10();
   if (runtime.step === "mbti") return renderMbti();
+  if (runtime.step === "sending") return renderSending(); // ★追加
   if (runtime.step === "handoff") return renderHandoff();
 }
 
@@ -1380,14 +1381,18 @@ function renderMbti(){
    ★変更：MBTI完了後は「完了画面でステイ」→未送信再送→集計シグナル→nameへ
 ========================= */
 async function saveMbtiAndGoHandoff(){
-  const msg = document.getElementById("msg");
-  msg.innerHTML = `<div class="tiny">処理中…</div>`;
 
-  // 念のため「今ページ未送信」を送る（※runtime.idxは最後のページのままなので41〜50が拾える）
-  await sendCurrentPageBatch_({ force:true, statusElId:"msg" });
-
+  // ★1) 先にMBTIを確保（sendingにするとDOMから消える）
   const sel = document.getElementById("mbtiSelect");
   const type = sel ? normalizeMbtiType(sel.value) : "";
+
+  // ★2) それから送信中画面へ
+  setStep("sending");
+  touchActivity_();
+  setTimeout(scrollToPageTop_, 0);
+  
+  // 念のため「今ページ未送信」を送る（※runtime.idxは最後のページのままなので41〜50が拾える）
+  await sendCurrentPageBatch_({ force:true });
 
   if (type){
     const found = (runtime.mbtiOptions || []).find(o => o.type === type);
@@ -1406,7 +1411,7 @@ async function saveMbtiAndGoHandoff(){
     saveLS();
 
     try{
-      const r = await postGAS({
+      await postGAS({
         action: ACTIONS.LOG,
         sessionId: runtime.sid,
         gender: runtime.gender,
@@ -1418,21 +1423,39 @@ async function saveMbtiAndGoHandoff(){
         MBTI4: axes.MBTI4,
         answeredAt: nowISO()
       });
-
-      msg.innerHTML = r?.ok
-        ? `<div class="ok">OK！</div>`
-        : `<div class="tiny">（通信が不安定な場合はローカル保存で継続します）</div>`;
     }catch(_){
-      msg.innerHTML = `<div class="tiny">（通信が不安定な場合はローカル保存で継続します）</div>`;
+      // 失敗してもローカル保存で継続
     }
-  }else{
-    msg.innerHTML = `<div class="tiny">MBTIは未選択のまま進みます。</div>`;
   }
 
-  // ★ここで「完了画面」へ
+  // ★送信処理が終わったら完了画面へ
   setStep("handoff");
   touchActivity_();
   setTimeout(scrollToPageTop_, 0);
+}
+
+/* =========================
+   Sending (MBTI送信中の画面)
+========================= */
+function renderSending(){
+  $app.innerHTML = `
+    <p class="qtitle" style="text-align:center;">
+      回答送信中…
+    </p>
+
+    <div class="hr"></div>
+
+    <div class="tiny" style="text-align:center;line-height:1.8;">
+      通信状況によって数秒かかることがあります。<br/>
+      画面はこのままでOKです。
+    </div>
+
+    <div class="hr"></div>
+
+    <button class="btn ghost" disabled>
+      送信しています…
+    </button>
+  `;
 }
 
 /* =========================

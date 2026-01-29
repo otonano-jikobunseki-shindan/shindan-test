@@ -1381,15 +1381,16 @@ function renderMbti(){
    ★変更：MBTI完了後は「完了画面でステイ」→未送信再送→集計シグナル→nameへ
 ========================= */
 async function saveMbtiAndGoHandoff(){
-  // ★まず「送信中」画面へ切り替え（不安対策）
+
+  // ★先にMBTI選択値を確保（画面切替すると要素が消えるため）
+  const sel = document.getElementById("mbtiSelect");
+  const type = sel ? normalizeMbtiType(sel.value) : "";
+
+  // ★その後に送信中画面へ
   setStep("sending");
   touchActivity_();
   setTimeout(scrollToPageTop_, 0);
-
-  // 以降は裏で送信処理
-  const msg = document.getElementById("msg"); // sending画面には無いのでOK（使わなくても動く）
-  // ※この msg は以降なくても良いが、元コードを大きく崩さないため残してもOK
-
+  
   // 念のため「今ページ未送信」を送る（※runtime.idxは最後のページのままなので41〜50が拾える）
   await sendCurrentPageBatch_({ force:true });
 

@@ -222,19 +222,27 @@
 
 <!-- ===== 合言葉UI（モザイクの外：押せる状態） ===== -->
 <div id="unlockBox" style="padding:12px;margin-bottom:12px;border:1px dashed #f3d2c2;border-radius:14px;background:rgba(255,255,255,.85);">
+
+  <p class="sectionTitle">ここから先は、あなたの回答を分析した詳細な診断です！</p>
+<div class="tiny">プライバシー保護のため、合言葉入力をおねがいします。</div>
+
   <p class="sectionTitle">合言葉を入力してください</p>
   <input class="field" id="unlockInput" placeholder="合言葉を入力">
   <button class="btn" style="margin-top:8px;" onclick="tryUnlock()">合言葉で解除</button>
-  <div class="tiny">※Instagram DMで受け取った合言葉を入力してください</div>
+  <div class="tiny">↓合言葉発行がまだの方は以下から！↓</div>
   <div id="unlockMsg"></div>
   <button class="btn" id="genKeyBtn" style="margin-top:10px;" onclick="generateKey()">
-  初めての表示はこちら（合言葉を発行）
+  合言葉を発行する（今だけ無料！登録不要！）
 </button>
 
 </div>
 
 <!-- ===== ここから下だけモザイク（押せないのはここでOK） ===== -->
 <div id="mosaicArea">
+  <div class="tiny" style="text-align:center;margin:6px 0 10px;">
+  結果に納得した人多数！ぜひご覧ください✨
+</div>
+
   <div class="hr"></div>
 
   <div id="sections"></div>

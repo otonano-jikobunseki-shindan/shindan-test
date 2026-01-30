@@ -580,7 +580,7 @@ function showDmPopup(message, onGo){
   const textEl = document.getElementById("dmPopupText");
   const btnGo = document.getElementById("dmPopupGo");
   const btnCancel = document.getElementById("dmPopupCancel");
-  if (!overlay || !textEl || !btnGo || !btnCancel){
+  if (!overlay || !textEl || !btnGo){
     // もしDOMが無い場合はそのまま遷移（保険）
     try{ onGo && onGo(); }catch(_){}
     return;
@@ -592,13 +592,13 @@ function showDmPopup(message, onGo){
     overlay.classList.remove("isOpen");
     overlay.setAttribute("aria-hidden","true");
     btnGo.onclick = null;
-    btnCancel.onclick = null;
+    if (btnCancel) btnCancel.onclick = null;
     // 背景スクロール戻す
     document.documentElement.style.overflow = "";
     document.body.style.overflow = "";
   };
 
-  btnCancel.onclick = () => close();
+  if (btnCancel) btnCancel.onclick = () => close();
   btnGo.onclick = () => {
     close();
     try{ onGo && onGo(); }catch(_){}

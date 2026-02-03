@@ -280,7 +280,7 @@
 
 
 <!-- ===== 合言葉UI（モザイクの外：押せる状態） ===== -->
-<div id="unlockBox" style="padding:12px;margin-bottom:12px;border:1px dashed #f3d2c2;border-radius:14px;background:rgba(255,255,255,.85);">
+<div id="unlockBox" style="display:none;padding:12px;margin-bottom:12px;border:1px dashed #f3d2c2;border-radius:14px;background:rgba(255,255,255,.85);">
 
   <p class="sectionTitle">ここから先は、あなたの回答を分析した詳細な診断です！</p>
 <div class="tiny">プライバシー保護のため、合言葉入力をおねがいします。</div>
@@ -1066,7 +1066,8 @@ for (let i=0;i<lines.length;i++){
       setIllustrationByNo(r.illusNo);
 
       renderSections(r);
-            setMosaic(true);
+            // setMosaic(true);
+
 
 
       document.getElementById("statusCard").style.display = "none";

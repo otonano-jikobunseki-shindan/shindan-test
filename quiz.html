@@ -889,21 +889,33 @@ function renderAge(){
 
   document.getElementById("ageBack").onclick = () => setStep("gender");
 
-  document.getElementById("ageNext").onclick = async () => {
-    const v = String($dec.value || "");
-    if (!v){
-      alert("年齢（大体）を選択してください。");
-      return;
-    }
+document.getElementById("ageNext").onclick = async () => {
+  const v = String($dec.value || "");
 
-    // 保存
-    runtime.ageDecade = v;
-    runtime.ageHalf = ($half.disabled ? "" : ($half.value || ""));
-    saveLS();
+  // ① 年代が未選択はNG
+  if (!v){
+    alert("年齢（大体）を選択してください。");
+    return;
+  }
 
-    // ここで診断開始（TSV読込→quizへ）
-    await startQuizAfterAge_();
-  };
+  // ② under/over 以外（=10〜90代）は「前半/後半」必須
+  const needHalf = !(v === "under" || v === "over");
+  const hv = String($half.value || "");
+
+  if (needHalf && !hv){
+    alert("前半 / 後半 を選択してください。");
+    return;
+  }
+
+  // 保存（under/over のときは半分は空で固定）
+  runtime.ageDecade = v;
+  runtime.ageHalf = needHalf ? hv : "";
+  saveLS();
+
+  // ここで診断開始（TSV読込→quizへ）
+  await startQuizAfterAge_();
+};
+
 }
 
 async function startQuizAfterAge_(){

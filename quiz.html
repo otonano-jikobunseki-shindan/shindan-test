@@ -373,6 +373,22 @@ function escapeHTML(s){
     .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 function nowISO(){ return new Date().toISOString(); }
+function buildAgeLabel_(){
+  const d = String(runtime.ageDecade || "").trim();
+  const h = String(runtime.ageHalf || "").trim();
+
+  if (!d) return "";                // 未選択なら空
+  if (d === "under") return "これらより下";
+  if (d === "over")  return "これらより上";
+
+  // 10..90 のとき
+  if (h === "first")  return `${d}代前半`;
+  if (h === "second") return `${d}代後半`;
+
+  // 念のため（基本ここには来ない想定）
+  return `${d}代`;
+}
+
 function newSessionId(){
   if (crypto?.randomUUID) return crypto.randomUUID();
   return "sid_" + Date.now() + "_" + Math.random().toString(16).slice(2);
@@ -421,6 +437,7 @@ function sendTargetsInBackground_(targets){
           action: ACTIONS.BATCH,
           sessionId: runtime.sid,
           gender: runtime.gender,
+          age: buildAgeLabel_(),
           answeredAt: nowISO(),
           answers: targets
         };
@@ -681,6 +698,7 @@ function setupAutoSendOnUnload_(){
         action: ACTIONS.BATCH,
         sessionId: runtime.sid,
         gender: runtime.gender,
+        age: buildAgeLabel_(),
         answeredAt: nowISO(),
         answers: targets
       };
@@ -1260,6 +1278,7 @@ async function sendCurrentPageBatch_(opts={}){
       action: ACTIONS.BATCH,
       sessionId: runtime.sid,
       gender: runtime.gender,
+      age: buildAgeLabel_(),
       answeredAt: nowISO(),
       answers: targets, // 1〜10件OK（GAS側も対応）
     };
@@ -1315,6 +1334,7 @@ async function sendAllUnsentUpTo10_(opts={}){
       action: ACTIONS.BATCH,
       sessionId: runtime.sid,
       gender: runtime.gender,
+      age: buildAgeLabel_(),
       answeredAt: nowISO(),
       answers: targets
     });
@@ -1374,6 +1394,7 @@ async function resendAllUnsentAfterMbti_(opts={}){
         action: ACTIONS.BATCH,
         sessionId: runtime.sid,
         gender: runtime.gender,
+        age: buildAgeLabel_(),
         answeredAt: nowISO(),
         answers: targets
       });
@@ -1410,6 +1431,7 @@ function signalStartAggregate_(){
       action: ACTIONS.START_AGG,
       sessionId: runtime.sid,
       gender: runtime.gender,
+      age: buildAgeLabel_(),
       signaledAt: nowISO()
     };
     const body = new URLSearchParams();
@@ -1552,6 +1574,7 @@ async function saveMbtiAndGoHandoff(){
         action: ACTIONS.LOG,
         sessionId: runtime.sid,
         gender: runtime.gender,
+        age: buildAgeLabel_(),
         qid: "MBTI",
         opt: type,
         MBTI1: axes.MBTI1,

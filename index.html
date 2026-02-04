@@ -215,8 +215,16 @@
 
 <body>
 <script>
-  // ★毎回ここだけ更新：Gemini共有URL
-  const TARGET_URL = "https://otonano-jikobunseki-shindan.github.io/shindan-test/quiz.html";
+// ★毎回ここだけ更新：Gemini共有URL（ベース）
+const TARGET_URL_BASE = "https://otonano-jikobunseki-shindan.github.io/shindan-test/quiz.html";
+
+// index.html に付いている ?from=... や ?invite=... を quiz.html へ引き継ぐ
+const TARGET_URL = (() => {
+  const u = new URL(TARGET_URL_BASE);
+  // index側のクエリを丸ごと引き継ぐ（先頭の ? を含む）
+  u.search = location.search || "";
+  return u.toString();
+})();
 
   const ua = navigator.userAgent || "";
 

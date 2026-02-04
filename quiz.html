@@ -390,9 +390,36 @@ function buildAgeLabel_(){
 }
 
 function newSessionId(){
-  if (crypto?.randomUUID) return crypto.randomUUID();
-  return "sid_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+  const sp = new URLSearchParams(location.search || "");
+  const from = (sp.get("from") || "").trim();
+  const invite = (sp.get("invite") || "").trim();
+
+  const tail8 = (s) => {
+    const t = String(s || "").replace(/[^a-zA-Z0-9]/g, "");
+    return (t.length >= 8) ? t.slice(-8) : t.padStart(8, "0");
+  };
+  const rand8 = () => Math.random().toString(16).slice(2, 10).padEnd(8, "0").slice(0, 8);
+
+  let prefix = "r";
+  let seed8 = rand8();
+
+  if (from) {
+    prefix = "f";
+    seed8 = tail8(from);
+  } else if (invite) {
+    prefix = "i";
+    seed8 = tail8(invite);
+  }
+
+  // 既存ロジック（元のnewSessionId相当）
+  let base;
+  if (crypto?.randomUUID) base = crypto.randomUUID();
+  else base = "sid_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+
+  // 仕様：頭文字 + 末尾8文字 + "_" + 既存ロジック
+  return `${prefix}${seed8}_${base}`;
 }
+
 function optStr(n){ return "OPT" + String(n); }
 function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
 

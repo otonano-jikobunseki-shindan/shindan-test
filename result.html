@@ -431,6 +431,7 @@ async function issueInviteUrl(){
     const inviteCode = makeInviteCode();
     const inviteUrl = new URL("index.html", location.href);
     inviteUrl.searchParams.set("invite", inviteCode);
+    inviteUrl.searchParams.set("from", sessionId);   // ←これ追加
 
     // クリップボードへコピー
     // ※Safariなどで失敗する場合に備えてフォールバックも用意

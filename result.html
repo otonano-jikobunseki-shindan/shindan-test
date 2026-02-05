@@ -417,9 +417,9 @@ async function issueInviteUrl(){
   }
 
   // 氏名入力（キャンセルなら中断）
-  const inviterName = (window.prompt("氏名を入力してください", "") || "").trim();
+  const inviterName = (window.prompt("お名前を入力してください", "") || "").trim();
   if (!inviterName){
-    setInviteMsg("err", "氏名が入力されなかったので中止しました。");
+    setInviteMsg("err", "お名前が入力されなかったので中止しました。");
     return;
   }
 

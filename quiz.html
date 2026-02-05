@@ -26,6 +26,9 @@
 
     --radius: 18px;
     --radius2: 14px;
+      --marquee-speed: 28s;
+  --fade-edge: 7%;
+
   }
 
   *{box-sizing:border-box}
@@ -284,7 +287,7 @@
 .landingShell{
   position: relative;
   width: 100%;
-  min-height: 70vh;
+  min-height: min(92vh, 860px);
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--line);

@@ -420,6 +420,55 @@
   padding: 14px;
   pointer-events:auto;
 }
+    /* =========================
+   Landingを「画面いっぱい」にする（indexと同じ見え方）
+========================= */
+body.isLanding{
+  background: transparent; /* landing中はbody背景いらない */
+}
+
+/* wrapの制限を解除 */
+body.isLanding .wrap{
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* heroはlanding中は不要（indexと同じ） */
+body.isLanding .hero{
+  display: none;
+}
+
+/* card枠を消す（landingが枠の中に入るのを防ぐ） */
+body.isLanding #app.card{
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* landing自体を全画面固定 */
+body.isLanding .landingShell{
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  z-index: 9999;
+}
+
+/* 全画面時はviewportも全高 */
+body.isLanding .landingShell .viewport{
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto; /* 枠内比率固定を解除 */
+}
+
 
 </style>
 </head>
@@ -930,6 +979,8 @@ init();
    Render router
 ========================= */
 function render(){
+    document.body.classList.toggle("isLanding", runtime.step === "landing");
+
   if ($dbgSid) $dbgSid.textContent = runtime.sid || "";
   if ($dbgStep) $dbgStep.textContent = runtime.step || "";
 

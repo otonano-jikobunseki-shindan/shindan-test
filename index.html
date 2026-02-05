@@ -6,25 +6,27 @@
   <meta name="robots" content="noindex,nofollow" />
   <title>開き方のご案内</title>
 
-  <!-- ② ブラウザUI非表示に“寄せる”設定（※通常表示では完全には消えません） -->
+  <!-- ブラウザUI非表示に“寄せる”（通常ブラウザでは完全には消えません） -->
   <meta name="theme-color" content="#ffd6e8" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
   <style>
     :root{
-  --cta-left: 14%;
-  --cta-top:  63.8%;
-  --cta-w:    72%;
-  --cta-h:    11%;
+      /* 透明ボタン（最終：少しオーバー目） */
+      --cta-left: 14%;
+      --cta-top:  63.8%;
+      --cta-w:    72%;
+      --cta-h:    11%;
 
-  --band-top:    23.486%;
-  --band-height: 7.471%;
-  --marquee-speed: 28s;
+      /* 緑帯（index-top.webp 基準） */
+      --band-top:    23.486%;
+      --band-height: 7.471%;
+      --marquee-speed: 28s;
 
-  --fade-edge: 7%;
-}
-
+      /* フェード強さ */
+      --fade-edge: 7%;
+    }
 
     *{ box-sizing:border-box; }
 
@@ -32,18 +34,17 @@
       margin:0;
       padding:0;
       height:100%;
-      background:#0000;
+      background:transparent;
       overscroll-behavior: none;
     }
 
     body{
-      /* 画面いっぱいで使う（新しいvh単位も併用） */
       min-height: 100vh;
       min-height: 100svh;
       min-height: 100dvh;
     }
 
-    /* ===== 背景（index-back.webp）フルスクリーン ===== */
+    /* 背景（index-back.webp）フルスクリーン */
     .bg-full{
       position: fixed;
       inset: 0;
@@ -51,83 +52,89 @@
       z-index: 0;
     }
 
-    /* ===== 手前（index-top.webp） ===== */
-.stage{
-  position: relative;
-  z-index: 1;
-  width: 100vw;
-  height: 100vh;
-  height: 100svh;
-  height: 100dvh;
-  overflow: hidden;
-}
+    /* 画面領域（ここでクリップ） */
+    .viewport{
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+      overflow: hidden;
+      z-index: 1;
+    }
 
-/* %配置の基準＝index-top.webpの比率に固定するラッパー */
-.topWrap{
-  position:absolute;
-  top:0;
-  left:0;
-  width:100vw;
-  aspect-ratio: 1239 / 2048; /* index-top.webpの比率 */
-}
+    /* %配置の基準＝index-top.webp の比率に固定するラッパー */
+    .topWrap{
+      position:absolute;
+      top:0;
+      left:0;
+      width:100vw;
+      aspect-ratio: 1239 / 2048; /* index-top.webp の比率 */
+    }
 
-/* index-top.webpは topWrap にぴったりはめる */
-.topWrap > img.top{
-  width:100%;
-  height:100%;
-  display:block;
-  user-select:none;
-  -webkit-user-drag:none;
+    /* index-top.webp は topWrap にぴったりはめる（ここがズレ修正の要） */
+    .topWrap > img.top{
+      width:100%;
+      height:100%;
+      display:block;
+      user-select:none;
+      -webkit-user-drag:none;
 
-  /* 上下フェード */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #000 var(--fade-edge),
-    #000 calc(100% - var(--fade-edge)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #000 var(--fade-edge),
-    #000 calc(100% - var(--fade-edge)),
-    transparent 100%
-  );
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-}
+      /* 上下フェード（自然に背景へ） */
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        #000 var(--fade-edge),
+        #000 calc(100% - var(--fade-edge)),
+        transparent 100%
+      );
+      mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        #000 var(--fade-edge),
+        #000 calc(100% - var(--fade-edge)),
+        transparent 100%
+      );
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-size: 100% 100%;
+      mask-size: 100% 100%;
+    }
 
-/* ===== ① 緑帯の無限スクロール（%は topWrap 基準） ===== */
-.band{
-  position:absolute;
-  left:0;
-  top: var(--band-top);
-  width:100%;
-  height: var(--band-height);
-  overflow:hidden;
-  pointer-events:none;
-}
+    /* 緑帯（%は topWrap 基準） */
+    .band{
+      position:absolute;
+      left:0;
+      top: var(--band-top);
+      width:100%;
+      height: var(--band-height);
+      overflow:hidden;
+      pointer-events:none;
+    }
 
-/* ===== ② 透明ボタン（%は topWrap 基準） ===== */
-.cta{
-  position:absolute;
-  left: var(--cta-left);
-  top:  var(--cta-top);
-  width: var(--cta-w);
-  height: var(--cta-h);
+    .track{
+      height:100%;
+      display:flex;
+      flex-wrap:nowrap;
+      gap:0;
+      align-items:stretch;
+      width:max-content;
+      animation: marqueeLeft var(--marquee-speed) linear infinite;
+      will-change: transform;
+    }
 
-  background: transparent;
-  border:0;
-  padding:0;
-  cursor:pointer;
+    .track img{
+      height:100%;
+      width:auto;
+      display:block;
+    }
 
-  min-height: 44px;
-  touch-action: manipulation;
-}
+    @keyframes marqueeLeft{
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
 
+    /* 透明ボタン（%は topWrap 基準） */
     .cta{
       position:absolute;
       left: var(--cta-left);
@@ -140,7 +147,6 @@
       padding:0;
       cursor:pointer;
 
-      /* 押しやすさ */
       min-height: 44px;
       touch-action: manipulation;
     }
@@ -167,28 +173,123 @@
 <body>
   <div class="bg-full" aria-hidden="true"></div>
 
-  <!-- ★ここに「元の index(6).html の script を一字一句そのまま」貼る -->
+  <!-- ▼▼▼ ここから：機能（JS）は一切変更なし ▼▼▼ -->
   <script>
-    /* ここは元のまま */
-  </script>
+    // ★毎回ここだけ更新：Gemini共有URL（ベース）
+    const TARGET_URL_BASE = "https://otonano-jikobunseki-shindan.github.io/shindan-test/quiz.html";
 
-  <div class="viewport">
+    // index.html に付いている ?from=... や ?invite=... を quiz.html へ引き継ぐ
+    const TARGET_URL = (() => {
+      const u = new URL(TARGET_URL_BASE);
+      // index側のクエリを丸ごと引き継ぐ（先頭の ? を含む）
+      u.search = location.search || "";
+      return u.toString();
+    })();
+
+    const ua = navigator.userAgent || "";
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+
+    const isInAppStrong =
+      /Line\//i.test(ua) ||
+      /;\s*wv\)/i.test(ua) ||
+      /Version\/4\.0/i.test(ua);
+
+    const isSafari =
+      isIOS &&
+      /Safari/i.test(ua) &&
+      !/CriOS|FxiOS|EdgiOS|OPiOS|GSA|Line\//i.test(ua);
+
+    const isChromeIOS = isIOS && /CriOS/i.test(ua);
+
+    const isChromeAndroid =
+      isAndroid &&
+      /Chrome\/|Chromium\//i.test(ua) &&
+      !/Edg|OPR|SamsungBrowser/i.test(ua) &&
+      !isInAppStrong;
+
+    const allowOnMobile = (isSafari || isChromeIOS || isChromeAndroid);
+
+    function toast(msg){
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.style.display = "block";
+      clearTimeout(window.__t);
+      window.__t = setTimeout(()=> el.style.display="none", 1700);
+    }
+
+    function makeChromeIntent(url){
+      const u = new URL(url);
+      const fallback = encodeURIComponent(url);
+      return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
+    }
+
+    async function copyLink(){
+      try{
+        await navigator.clipboard.writeText(TARGET_URL);
+        toast("リンクをコピーしました！");
+      }catch(e){
+        const ta=document.createElement("textarea");
+        ta.value=TARGET_URL; document.body.appendChild(ta);
+        ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+        toast("リンクをコピーしました！");
+      }
+    }
+
+    function openExternal(){
+      if (isAndroid) {
+        location.href = makeChromeIntent(TARGET_URL);
+        return;
+      }
+      window.open(TARGET_URL, "_blank", "noopener,noreferrer");
+    }
+
+    if (!isMobile) {
+      location.replace(TARGET_URL);
+    } else if (allowOnMobile) {
+      location.replace(TARGET_URL);
+    } else {
+      window.__APP__ = { openExternal, copyLink };
+    }
+  </script>
+  <!-- ▲▲▲ ここまで：機能（JS）は一切変更なし ▲▲▲ -->
+
+  <div class="viewport" aria-label="案内画面">
     <div class="topWrap">
       <img class="top" src="assets/illust/index-top.webp" alt="開き方のご案内">
 
-      <!-- 緑帯 -->
+      <!-- ① 緑帯：1〜40を隙間なしで無限スクロール -->
       <div class="band" aria-hidden="true">
         <div class="track">
-          <!-- 1周目 + 2周目（あなたの既存の並びをそのまま） -->
+          <!-- 1周目 -->
+          <img src="assets/illust/1.png" alt=""><img src="assets/illust/2.png" alt=""><img src="assets/illust/3.png" alt=""><img src="assets/illust/4.png" alt=""><img src="assets/illust/5.png" alt="">
+          <img src="assets/illust/6.png" alt=""><img src="assets/illust/7.png" alt=""><img src="assets/illust/8.png" alt=""><img src="assets/illust/9.png" alt=""><img src="assets/illust/10.png" alt="">
+          <img src="assets/illust/11.png" alt=""><img src="assets/illust/12.png" alt=""><img src="assets/illust/13.png" alt=""><img src="assets/illust/14.png" alt=""><img src="assets/illust/15.png" alt="">
+          <img src="assets/illust/16.png" alt=""><img src="assets/illust/17.png" alt=""><img src="assets/illust/18.png" alt=""><img src="assets/illust/19.png" alt=""><img src="assets/illust/20.png" alt="">
+          <img src="assets/illust/21.png" alt=""><img src="assets/illust/22.png" alt=""><img src="assets/illust/23.png" alt=""><img src="assets/illust/24.png" alt=""><img src="assets/illust/25.png" alt="">
+          <img src="assets/illust/26.png" alt=""><img src="assets/illust/27.png" alt=""><img src="assets/illust/28.png" alt=""><img src="assets/illust/29.png" alt=""><img src="assets/illust/30.png" alt="">
+          <img src="assets/illust/31.png" alt=""><img src="assets/illust/32.png" alt=""><img src="assets/illust/33.png" alt=""><img src="assets/illust/34.png" alt=""><img src="assets/illust/35.png" alt="">
+          <img src="assets/illust/36.png" alt=""><img src="assets/illust/37.png" alt=""><img src="assets/illust/38.png" alt=""><img src="assets/illust/39.png" alt=""><img src="assets/illust/40.png" alt="">
+
+          <!-- 2周目 -->
+          <img src="assets/illust/1.png" alt=""><img src="assets/illust/2.png" alt=""><img src="assets/illust/3.png" alt=""><img src="assets/illust/4.png" alt=""><img src="assets/illust/5.png" alt="">
+          <img src="assets/illust/6.png" alt=""><img src="assets/illust/7.png" alt=""><img src="assets/illust/8.png" alt=""><img src="assets/illust/9.png" alt=""><img src="assets/illust/10.png" alt="">
+          <img src="assets/illust/11.png" alt=""><img src="assets/illust/12.png" alt=""><img src="assets/illust/13.png" alt=""><img src="assets/illust/14.png" alt=""><img src="assets/illust/15.png" alt="">
+          <img src="assets/illust/16.png" alt=""><img src="assets/illust/17.png" alt=""><img src="assets/illust/18.png" alt=""><img src="assets/illust/19.png" alt=""><img src="assets/illust/20.png" alt="">
+          <img src="assets/illust/21.png" alt=""><img src="assets/illust/22.png" alt=""><img src="assets/illust/23.png" alt=""><img src="assets/illust/24.png" alt=""><img src="assets/illust/25.png" alt="">
+          <img src="assets/illust/26.png" alt=""><img src="assets/illust/27.png" alt=""><img src="assets/illust/28.png" alt=""><img src="assets/illust/29.png" alt=""><img src="assets/illust/30.png" alt="">
+          <img src="assets/illust/31.png" alt=""><img src="assets/illust/32.png" alt=""><img src="assets/illust/33.png" alt=""><img src="assets/illust/34.png" alt=""><img src="assets/illust/35.png" alt="">
+          <img src="assets/illust/36.png" alt=""><img src="assets/illust/37.png" alt=""><img src="assets/illust/38.png" alt=""><img src="assets/illust/39.png" alt=""><img src="assets/illust/40.png" alt="">
         </div>
       </div>
 
-      <!-- 透明ボタン -->
+      <!-- ② 透明ボタン：既存ボタンと同じ機能（openExternal） -->
       <button class="cta" type="button" onclick="__APP__.openExternal()" aria-label="診断スタート"></button>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
 </body>
-
 </html>

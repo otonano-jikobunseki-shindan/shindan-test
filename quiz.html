@@ -275,6 +275,149 @@
 
   .qnum{font-weight:900}
   .qopt{margin:8px 0}
+    /* =========================
+   Landing（index風UI）
+   - quiz-top.webp を使う
+   - 緑帯スクロール & 透明ボタン
+========================= */
+
+.landingShell{
+  position: relative;
+  width: 100%;
+  min-height: 70vh;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: transparent;
+}
+
+/* 背景（index-back.webp） */
+.landingShell .bg-full{
+  position: absolute;
+  inset: 0;
+  background: url("assets/illust/index-back.webp") center center / cover no-repeat;
+  z-index: 0;
+}
+
+/* 表示領域 */
+.landingShell .viewport{
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1239 / 2048; /* index-top.webp基準と同じ比率でOK */
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* top画像（quiz-top.webp） */
+.landingShell .topWrap{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+}
+
+.landingShell img.top{
+  width:100%;
+  height:100%;
+  display:block;
+  user-select:none;
+  -webkit-user-drag:none;
+
+  /* 上下フェード（自然に背景へ） */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 var(--fade-edge, 7%),
+    #000 calc(100% - var(--fade-edge, 7%)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 var(--fade-edge, 7%),
+    #000 calc(100% - var(--fade-edge, 7%)),
+    transparent 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+/* 緑帯（indexと同じ位置） */
+.landingShell .band{
+  position:absolute;
+  left:0;
+  top: 23.486%;
+  width:100%;
+  height: 7.471%;
+  overflow:hidden;
+  pointer-events:none;
+}
+
+.landingShell .track{
+  height:100%;
+  display:flex;
+  flex-wrap:nowrap;
+  gap:0;
+  align-items:stretch;
+  width:max-content;
+  animation: landingMarqueeLeft var(--marquee-speed, 28s) linear infinite;
+  will-change: transform;
+}
+
+.landingShell .track img{
+  height:100%;
+  width:auto;
+  display:block;
+}
+
+@keyframes landingMarqueeLeft{
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* 透明ボタン（indexと同じ位置） */
+.landingShell .cta{
+  position:absolute;
+  left: 14%;
+  top:  63.8%;
+  width: 72%;
+  height: 11%;
+
+  background: transparent;
+  border:0;
+  padding:0;
+  cursor:pointer;
+
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+/* 途中保存の確認パネル（上に重ねる） */
+.landingShell .overlay{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding: 14px;
+  z-index: 2;
+  pointer-events:none; /* パネルだけ有効にする */
+}
+
+.landingShell .panel{
+  width: min(520px, 94%);
+  background: rgba(255,255,255,.88);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  padding: 14px;
+  pointer-events:auto;
+}
+
 </style>
 </head>
 <body>
@@ -800,31 +943,74 @@ function render(){
 /* =========================
    Landing / Gender
 ========================= */
-function renderLanding(){
+  function renderLanding(){
   const hasProgress = !!(runtime.gender && (runtime.idx > 0 || Object.keys(runtime.answers||{}).length > 0));
 
+  // landingは index風の“画像UI”にする
+  // - 途中保存が無い：透明ボタン押下 → 性別選択へ（従来のbtnStartと同じ挙動）
+  // - 途中保存が 有る：必ず確認パネル（続き/最初から）を出す（従来仕様維持）
   $app.innerHTML = `
-    ${hasProgress ? `
-      <div class="mutedBox tiny" style="margin-bottom:10px;">
-        途中保存データが見つかりました。続きから再開できます。
+    <div class="landingShell">
+      <div class="bg-full" aria-hidden="true"></div>
+
+      <div class="viewport" aria-label="診断スタート画面">
+        <div class="topWrap">
+          <img class="top" src="assets/illust/quiz-top.webp" alt="診断スタート">
+
+          <!-- 緑帯：1〜40を隙間なしで無限スクロール -->
+          <div class="band" aria-hidden="true">
+            <div class="track">
+              <!-- 1周目 -->
+              <img src="assets/illust/1.png" alt=""><img src="assets/illust/2.png" alt=""><img src="assets/illust/3.png" alt=""><img src="assets/illust/4.png" alt=""><img src="assets/illust/5.png" alt="">
+              <img src="assets/illust/6.png" alt=""><img src="assets/illust/7.png" alt=""><img src="assets/illust/8.png" alt=""><img src="assets/illust/9.png" alt=""><img src="assets/illust/10.png" alt="">
+              <img src="assets/illust/11.png" alt=""><img src="assets/illust/12.png" alt=""><img src="assets/illust/13.png" alt=""><img src="assets/illust/14.png" alt=""><img src="assets/illust/15.png" alt="">
+              <img src="assets/illust/16.png" alt=""><img src="assets/illust/17.png" alt=""><img src="assets/illust/18.png" alt=""><img src="assets/illust/19.png" alt=""><img src="assets/illust/20.png" alt="">
+              <img src="assets/illust/21.png" alt=""><img src="assets/illust/22.png" alt=""><img src="assets/illust/23.png" alt=""><img src="assets/illust/24.png" alt=""><img src="assets/illust/25.png" alt="">
+              <img src="assets/illust/26.png" alt=""><img src="assets/illust/27.png" alt=""><img src="assets/illust/28.png" alt=""><img src="assets/illust/29.png" alt=""><img src="assets/illust/30.png" alt="">
+              <img src="assets/illust/31.png" alt=""><img src="assets/illust/32.png" alt=""><img src="assets/illust/33.png" alt=""><img src="assets/illust/34.png" alt=""><img src="assets/illust/35.png" alt="">
+              <img src="assets/illust/36.png" alt=""><img src="assets/illust/37.png" alt=""><img src="assets/illust/38.png" alt=""><img src="assets/illust/39.png" alt=""><img src="assets/illust/40.png" alt="">
+
+              <!-- 2周目 -->
+              <img src="assets/illust/1.png" alt=""><img src="assets/illust/2.png" alt=""><img src="assets/illust/3.png" alt=""><img src="assets/illust/4.png" alt=""><img src="assets/illust/5.png" alt="">
+              <img src="assets/illust/6.png" alt=""><img src="assets/illust/7.png" alt=""><img src="assets/illust/8.png" alt=""><img src="assets/illust/9.png" alt=""><img src="assets/illust/10.png" alt="">
+              <img src="assets/illust/11.png" alt=""><img src="assets/illust/12.png" alt=""><img src="assets/illust/13.png" alt=""><img src="assets/illust/14.png" alt=""><img src="assets/illust/15.png" alt="">
+              <img src="assets/illust/16.png" alt=""><img src="assets/illust/17.png" alt=""><img src="assets/illust/18.png" alt=""><img src="assets/illust/19.png" alt=""><img src="assets/illust/20.png" alt="">
+              <img src="assets/illust/21.png" alt=""><img src="assets/illust/22.png" alt=""><img src="assets/illust/23.png" alt=""><img src="assets/illust/24.png" alt=""><img src="assets/illust/25.png" alt="">
+              <img src="assets/illust/26.png" alt=""><img src="assets/illust/27.png" alt=""><img src="assets/illust/28.png" alt=""><img src="assets/illust/29.png" alt=""><img src="assets/illust/30.png" alt="">
+              <img src="assets/illust/31.png" alt=""><img src="assets/illust/32.png" alt=""><img src="assets/illust/33.png" alt=""><img src="assets/illust/34.png" alt=""><img src="assets/illust/35.png" alt="">
+              <img src="assets/illust/36.png" alt=""><img src="assets/illust/37.png" alt=""><img src="assets/illust/38.png" alt=""><img src="assets/illust/39.png" alt=""><img src="assets/illust/40.png" alt="">
+            </div>
+          </div>
+
+          <!-- 透明ボタン（途中保存が無い時だけ押せる） -->
+          ${hasProgress ? `` : `<button class="cta" type="button" id="btnStartTransparent" aria-label="診断スタート"></button>`}
+        </div>
+
+        <!-- 途中保存がある場合：必ず確認画面を出す -->
+        ${hasProgress ? `
+          <div class="overlay">
+            <div class="panel">
+              <div class="mutedBox tiny" style="margin:0 0 10px;">
+                途中保存データが見つかりました。続きから再開できます。
+              </div>
+              <div class="row" style="justify-content:center;">
+                <button class="btn primary" id="btnResume" style="flex:0; min-width:180px;">続きから再開</button>
+                <button class="btn danger" id="btnNewStart" style="flex:0; min-width:140px;">最初から</button>
+              </div>
+            </div>
+          </div>
+        ` : ``}
       </div>
-      <div class="row" style="justify-content:center;">
-        <button class="btn primary" id="btnResume" style="flex:0; min-width:180px;">続きから再開</button>
-        <button class="btn danger" id="btnNewStart" style="flex:0; min-width:140px;">最初から</button>
-      </div>
-    ` : `
-      <div class="row" style="justify-content:center;">
-        <button class="btn primary" id="btnStart" style="flex:0; width:240px;">診断をはじめる</button>
-      </div>
-    `}
+    </div>
   `;
 
-
+  // 途中保存が無い：透明ボタン＝従来の「診断をはじめる」と同じ
   if (!hasProgress){
-    document.getElementById("btnStart").onclick = () => setStep("gender");
+    document.getElementById("btnStartTransparent").onclick = () => setStep("gender");
     return;
   }
 
+  // 途中保存あり：従来ロジックをそのまま
   document.getElementById("btnResume").onclick = async () => {
     try{
       runtime.questions = await loadTSV(runtime.gender === "male" ? TSV_PATH.male : TSV_PATH.female);
@@ -832,7 +1018,6 @@ function renderLanding(){
       saveLS();
       setStep("quiz");
       touchActivity_();
-      // ★変更：確実にページトップへ
       setTimeout(scrollToPageTop_, 0);
     }catch(err){
       $app.innerHTML = `<div class="err">TSV読込エラー: ${escapeHTML(err.message)}</div>
@@ -845,7 +1030,6 @@ function renderLanding(){
   document.getElementById("btnNewStart").onclick = async () => {
     if (!confirm("保存データを破棄して最初からにしますか？")) return;
 
-    // ★変更：性別維持のまま最初から
     try{
       await restartFromBeginningKeepGender_();
       if (runtime.gender){
@@ -853,15 +1037,14 @@ function renderLanding(){
         touchActivity_();
         setTimeout(scrollToPageTop_, 0);
       } else {
-        // 性別が無いなら通常通り
         hardReset_();
       }
     }catch(err){
-      // 例外時だけ従来動作へ
       hardReset_();
     }
   };
 }
+
 
 function renderGender(){
   $app.innerHTML = `

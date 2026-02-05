@@ -417,11 +417,8 @@ async function issueInviteUrl(){
   }
 
   // 氏名入力（キャンセルなら中断）
-  const inviterName = (window.prompt("お名前を入力してください", "") || "").trim();
-  if (!inviterName){
-    setInviteMsg("err", "お名前が入力されなかったので中止しました。");
-    return;
-  }
+  const inviterName = "招待URL発行！";
+
 
   btn.disabled = true;
   btn.textContent = "発行中…";

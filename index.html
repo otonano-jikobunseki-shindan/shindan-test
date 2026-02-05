@@ -185,6 +185,7 @@
       u.search = location.search || "";
       return u.toString();
     })();
+    const TARGET_URL_STARTED = TARGET_URL + (TARGET_URL.includes("?") ? "&" : "?") + "autostart=1";
 
     const ua = navigator.userAgent || "";
 
@@ -239,12 +240,13 @@
     }
 
     function openExternal(){
-      if (isAndroid) {
-        location.href = makeChromeIntent(TARGET_URL);
-        return;
-      }
-      window.open(TARGET_URL, "_blank", "noopener,noreferrer");
-    }
+  if (isAndroid) {
+    location.href = makeChromeIntent(TARGET_URL_STARTED);
+    return;
+  }
+  window.open(TARGET_URL_STARTED, "_blank", "noopener,noreferrer");
+}
+
 
     if (!isMobile) {
       location.replace(TARGET_URL);

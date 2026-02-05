@@ -758,16 +758,27 @@ function setupAutoSendOnUnload_(){
 /* =========================
    Init
 ========================= */
-async function init(){
+  async function init(){
   loadLS();
   if (!runtime.sid) runtime.sid = newSessionId();
 
   setupAutoSendOnUnload_();
 
-  runtime.step = "landing";
+  // indexの透明ボタンから来たときだけ付くフラグ（autostart=1）
+  const qs = new URLSearchParams(location.search || "");
+  const requestedAutoStart = (qs.get("autostart") === "1");
+
+  // 途中保存の有無（renderLanding() と同じ判定）
+  const hasProgress = !!(runtime.gender && (runtime.idx > 0 || Object.keys(runtime.answers||{}).length > 0));
+
+  // autostart かつ 途中保存なし → landingをスキップして性別選択へ
+  // 途中保存あり → 必ず landing（再開/最初から確認）を出す
+  runtime.step = (requestedAutoStart && !hasProgress) ? "gender" : "landing";
+
   render();
 }
 init();
+
 
 /* =========================
    Render router

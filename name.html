@@ -173,18 +173,6 @@ async function submitName(){
   }catch(_){}
 }
 
-  try{
-    await postGASWithRetry({
-      action:"saveName",
-      sessionId,
-      name,
-      answeredAt:new Date().toISOString()
-    }, true);
-
-    allDone.name = true;
-    tryFinish();
-  }catch(_){}
-}
 
 /* quiz 未送信回答送信 */
 (function resendUnsentAnswers(){

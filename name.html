@@ -150,9 +150,28 @@ async function submitName(){
     return;
   }
 
+  const name = document.getElementById("nameInput").value.trim();
+
+  // ★ここ追加：未入力ブロック
+  if(!name){
+    alert("お名前を入力してください😊");
+    return;
+  }
+
   showWaiting();
 
-  const name = document.getElementById("nameInput").value.trim();
+  try{
+    await postGASWithRetry({
+      action:"saveName",
+      sessionId,
+      name,
+      answeredAt:new Date().toISOString()
+    }, true);
+
+    allDone.name = true;
+    tryFinish();
+  }catch(_){}
+}
 
   try{
     await postGASWithRetry({

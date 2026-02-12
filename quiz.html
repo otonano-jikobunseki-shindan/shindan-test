@@ -526,6 +526,7 @@ const LS = {
   sent: "diag_sent",          // 送信済みqid一覧
   ageDecade: "ageDecade",
   ageHalf: "ageHalf",
+  ageNum: "ageNum",
 
 };
 
@@ -572,20 +573,28 @@ function escapeHTML(s){
 }
 function nowISO(){ return new Date().toISOString(); }
 function buildAgeLabel_(){
+  // ★新仕様：数字入力があればそれを優先して「xx歳」で返す
+  const nRaw = String(runtime.ageNum || "").trim();
+  const n = Number(nRaw);
+
+  if (nRaw !== "" && Number.isFinite(n)){
+    // 整数っぽく扱う（29.5みたいなのが来たら四捨五入ではなく切り捨てにしたいならここ調整）
+    const nn = Math.floor(n);
+    return `${nn}歳`;
+  }
+
+  // 互換：旧仕様の途中データが残ってる場合の保険
   const d = String(runtime.ageDecade || "").trim();
   const h = String(runtime.ageHalf || "").trim();
 
-  if (!d) return "";                // 未選択なら空
+  if (!d) return "";
   if (d === "under") return "これらより下";
   if (d === "over")  return "これらより上";
-
-  // 10..90 のとき
   if (h === "first")  return `${d}代前半`;
   if (h === "second") return `${d}代後半`;
-
-  // 念のため（基本ここには来ない想定）
   return `${d}代`;
 }
+
 
 function newSessionId(){
   const sp = new URLSearchParams(location.search || "");
@@ -720,6 +729,7 @@ async function restartFromBeginningKeepGender_(){
 function loadLS(){
   const ageDecade = localStorage.getItem(LS.ageDecade);
   const ageHalf = localStorage.getItem(LS.ageHalf);
+  const ageNum = localStorage.getItem(LS.ageNum); 
   const sid = localStorage.getItem(LS.sid);
   const gender = localStorage.getItem(LS.gender);
   const answersRaw = localStorage.getItem(LS.answers);
@@ -730,6 +740,7 @@ function loadLS(){
   if (gender) runtime.gender = gender;
   if (ageDecade) runtime.ageDecade = ageDecade;
   if (ageHalf) runtime.ageHalf = ageHalf;
+  if (ageNum) runtime.ageNum = ageNum;
 
   if (answersRaw){
     try{ runtime.answers = JSON.parse(answersRaw) || {}; }catch(_){}
@@ -753,6 +764,8 @@ function saveLS(){
   localStorage.setItem(LS.sent, JSON.stringify(runtime.sentMap || {}));
   localStorage.setItem(LS.ageDecade, runtime.ageDecade || "");
   localStorage.setItem(LS.ageHalf, runtime.ageHalf || "");
+  localStorage.setItem(LS.ageNum, runtime.ageNum || "");
+
 
 }
 
@@ -1124,29 +1137,19 @@ document.getElementById("gOther").onclick = () => { runtime.gender = "female"; s
 
 
 function renderAge(){
-  const decade = runtime.ageDecade || "";
-  const half = runtime.ageHalf || "";
+  const ageNum = String(runtime.ageNum || "");
 
   $app.innerHTML = `
-    <div class="label">質問 0 / 年齢（大体）</div>
+    <div class="label">質問 0 / 年齢</div>
     <p class="qtitle">あなたの年齢は？※診断結果に関係します。</p>
 
     <div class="row" style="gap:10px; align-items:center; justify-content:center;">
-      <select id="ageDecade" class="select" style="min-width:190px;">
-        <option value="" ${decade===""?"selected":""}>選択してください</option>
-        <option value="under" ${decade==="under"?"selected":""}>これらより下</option>
-        ${[...Array(9)].map((_,i)=> {
-          const v = (i+1)*10; // 10..90
-          return `<option value="${v}" ${String(decade)===String(v)?"selected":""}>${v}代</option>`;
-        }).join("")}
-        <option value="over" ${decade==="over"?"selected":""}>これらより上</option>
-      </select>
-
-      <select id="ageHalf" class="select" style="min-width:150px;">
-        <option value="" ${half===""?"selected":""}>前半/後半</option>
-        <option value="first" ${half==="first"?"selected":""}>前半</option>
-        <option value="second" ${half==="second"?"selected":""}>後半</option>
-      </select>
+      <input id="ageNum" class="field" type="number" inputmode="numeric"
+        min="0" max="120" step="1"
+        placeholder="例：29"
+        value="${escapeHTML(ageNum)}"
+        style="min-width:220px;">
+      <div style="opacity:.8;">歳</div>
     </div>
 
     <div class="hr"></div>
@@ -1155,64 +1158,33 @@ function renderAge(){
       <button class="btn primary" id="ageNext" style="flex:0; min-width:180px;">次へ</button>
       <button class="btn ghost" id="ageBack" style="flex:0; min-width:120px;">戻る</button>
     </div>
-
   `;
 
-  const $dec = document.getElementById("ageDecade");
-  const $half = document.getElementById("ageHalf");
-
-  // 初期状態の無効化反映
-  const applyDisable = () => {
-    const v = String($dec.value || "");
-    const disableHalf = (v === "under" || v === "over");
-    $half.disabled = disableHalf;
-    if (disableHalf) $half.value = ""; // 強制的に空へ
-  };
-  applyDisable();
-
-  $dec.onchange = () => {
-    applyDisable();
-    runtime.ageDecade = $dec.value || "";
-    runtime.ageHalf = $half.value || "";
-    saveLS();
-  };
-
-  $half.onchange = () => {
-    runtime.ageDecade = $dec.value || "";
-    runtime.ageHalf = $half.value || "";
-    saveLS();
-  };
+  const $age = document.getElementById("ageNum");
 
   document.getElementById("ageBack").onclick = () => setStep("gender");
 
-document.getElementById("ageNext").onclick = async () => {
-  const v = String($dec.value || "");
+  document.getElementById("ageNext").onclick = async () => {
+    const raw = String($age.value || "").trim();
+    const n = Number(raw);
 
-  // ① 年代が未選択はNG
-  if (!v){
-    alert("年齢（大体）を選択してください。");
-    return;
-  }
+    if (!raw || !Number.isFinite(n)){
+      alert("年齢を数字で入力してください。");
+      return;
+    }
+    const nn = Math.floor(n);
+    if (nn < 0 || nn > 120){
+      alert("年齢は0〜120の範囲で入力してください。");
+      return;
+    }
 
-  // ② under/over 以外（=10〜90代）は「前半/後半」必須
-  const needHalf = !(v === "under" || v === "over");
-  const hv = String($half.value || "");
+    runtime.ageNum = String(nn);
+    saveLS();
 
-  if (needHalf && !hv){
-    alert("前半 / 後半 を選択してください。");
-    return;
-  }
-
-  // 保存（under/over のときは半分は空で固定）
-  runtime.ageDecade = v;
-  runtime.ageHalf = needHalf ? hv : "";
-  saveLS();
-
-  // ここで診断開始（TSV読込→quizへ）
-  await startQuizAfterAge_();
-};
-
+    await startQuizAfterAge_();
+  };
 }
+
 
 async function startQuizAfterAge_(){
   // 性別が無いのは異常なので戻す
